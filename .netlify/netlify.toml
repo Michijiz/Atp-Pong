@@ -1,0 +1,26 @@
+plugins = []
+headers = []
+redirects = []
+
+[functions]
+
+[functions."*"]
+
+[build]
+publish = "C:\\Users\\miche\\OneDrive\\Documenti\\Progetti\\atp-pong"
+publishOrigin = "default"
+base = "C:\\Users\\miche\\OneDrive\\Documenti\\Progetti\\atp-pong"
+
+[build.environment]
+
+[build.processing]
+
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]
