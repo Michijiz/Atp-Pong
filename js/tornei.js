@@ -436,13 +436,144 @@ export function openRegistraMatchTorneo(torneoId, p1id, p2id, girone) {
   const p2 = state.allPlayers.find(p => p.id === p2id);
   _torneoMatchPending = { torneoId, p1id, p2id, girone };
 
+  // Rimuovi eventuale modal precedente
+  document.getElementById('_torneoModeModal')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = '_torneoModeModal';
+  overlay.style.cssText = `
+    position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.65);
+    display:flex;align-items:flex-end;justify-content:center;
+  `;
+
+  overlay.innerHTML = `
+    <div style="
+      background:var(--bg2);border-top:1px solid var(--border);
+      border-radius:20px 20px 0 0;padding:24px 20px 36px;
+      width:100%;max-width:480px;
+    ">
+      <div style="font-family:var(--font-display);font-size:22px;letter-spacing:1px;margin-bottom:6px">
+        Registra Partita
+      </div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:24px">
+        ${p1?.nome || 'P1'} vs ${p2?.nome || 'P2'}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <button onclick="window._torneoLiveMode()" style="
+          background:var(--accent);color:#000;border:none;
+          border-radius:var(--radius);padding:14px;font-size:15px;font-weight:700;cursor:pointer;
+        ">🏓 Live — Segnapunti</button>
+        <button onclick="window._torneoPostMode()" style="
+          background:var(--bg3);color:var(--text1);border:1px solid var(--border);
+          border-radius:var(--radius);padding:14px;font-size:15px;font-weight:600;cursor:pointer;
+        ">✏️ Post — Inserisci risultato</button>
+        <button onclick="document.getElementById('_torneoModeModal').remove()" style="
+          background:none;border:none;color:var(--text2);font-size:14px;cursor:pointer;padding:8px;
+        ">Annulla</button>
+      </div>
+    </div>
+  `;
+
+  // Click fuori chiude
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) {
+      overlay.remove();
+      _torneoMatchPending = null;
+    }
+  });
+
+  document.body.appendChild(overlay);
+}
+
+// Modalità LIVE — apre lo scorekeeper
+window._torneoLiveMode = function() {
+  document.getElementById('_torneoModeModal')?.remove();
+  if (!_torneoMatchPending) return;
+  const { p1id, p2id } = _torneoMatchPending;
+  const p1 = state.allPlayers.find(p => p.id === p1id);
+  const p2 = state.allPlayers.find(p => p.id === p2id);
   openScorekeeper({
     p1Name: p1?.nome || 'P1',
     p2Name: p2?.nome || 'P2',
     onConfirm: (s1, s2) => _doSubmitTorneoMatch(s1, s2),
     onCancel:  () => { _torneoMatchPending = null; }
   });
-}
+};
+
+// Modalità POST — form con input numerici
+window._torneoPostMode = function() {
+  document.getElementById('_torneoModeModal')?.remove();
+  if (!_torneoMatchPending) return;
+  const { p1id, p2id } = _torneoMatchPending;
+  const p1 = state.allPlayers.find(p => p.id === p1id);
+  const p2 = state.allPlayers.find(p => p.id === p2id);
+
+  const overlay = document.createElement('div');
+  overlay.id = '_torneoPostModal';
+  overlay.style.cssText = `
+    position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.65);
+    display:flex;align-items:flex-end;justify-content:center;
+  `;
+
+  overlay.innerHTML = `
+    <div style="
+      background:var(--bg2);border-top:1px solid var(--border);
+      border-radius:20px 20px 0 0;padding:24px 20px 36px;
+      width:100%;max-width:480px;
+    ">
+      <div style="font-family:var(--font-display);font-size:22px;letter-spacing:1px;margin-bottom:6px">
+        Inserisci Risultato
+      </div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:20px">
+        ${p1?.nome || 'P1'} vs ${p2?.nome || 'P2'}
+      </div>
+      <div style="display:flex;align-items:center;gap:16px;justify-content:center;margin-bottom:24px">
+        <div style="flex:1;text-align:center">
+          <div style="font-size:13px;color:var(--text2);margin-bottom:8px">${p1?.nome || 'P1'}</div>
+          <input id="_tp_s1" type="number" min="0" max="99" placeholder="0"
+            style="width:100%;text-align:center;font-size:32px;font-family:var(--font-mono);font-weight:700;
+                   background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);
+                   padding:12px;color:var(--text1);outline:none;">
+        </div>
+        <div style="font-size:24px;color:var(--text2);padding-top:20px">—</div>
+        <div style="flex:1;text-align:center">
+          <div style="font-size:13px;color:var(--text2);margin-bottom:8px">${p2?.nome || 'P2'}</div>
+          <input id="_tp_s2" type="number" min="0" max="99" placeholder="0"
+            style="width:100%;text-align:center;font-size:32px;font-family:var(--font-mono);font-weight:700;
+                   background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);
+                   padding:12px;color:var(--text1);outline:none;">
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button onclick="window._torneoPostSubmit()" style="
+          background:var(--accent);color:#000;border:none;
+          border-radius:var(--radius);padding:14px;font-size:15px;font-weight:700;cursor:pointer;
+        ">Conferma Risultato</button>
+        <button onclick="document.getElementById('_torneoPostModal').remove()" style="
+          background:none;border:none;color:var(--text2);font-size:14px;cursor:pointer;padding:8px;
+        ">Annulla</button>
+      </div>
+    </div>
+  `;
+
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) {
+      overlay.remove();
+      _torneoMatchPending = null;
+    }
+  });
+
+  document.body.appendChild(overlay);
+  setTimeout(() => document.getElementById('_tp_s1')?.focus(), 100);
+};
+
+window._torneoPostSubmit = async function() {
+  const s1 = parseInt(document.getElementById('_tp_s1')?.value);
+  const s2 = parseInt(document.getElementById('_tp_s2')?.value);
+  document.getElementById('_torneoPostModal')?.remove();
+  if (isNaN(s1) || isNaN(s2)) return toast('Inserisci entrambi i punteggi', 'error');
+  await _doSubmitTorneoMatch(s1, s2);
+};
 
 async function _doSubmitTorneoMatch(s1, s2) {
   if (!_torneoMatchPending) return;
