@@ -21,11 +21,9 @@ export function closeModal(id) {
   document.getElementById(id).classList.remove('open');
 }
 
-export function showSection(id, navBtn) {
+export function showSection(id) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.sidebar-nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(`sec-${id}`).classList.add('active');
-  if (navBtn) navBtn.classList.add('active');
+  document.getElementById(`sec-${id}`)?.classList.add('active');
 }
 
 // Chiudi modal cliccando fuori
@@ -53,7 +51,7 @@ export function confirmDialog(message, onConfirm, onCancel) {
 
   overlay.innerHTML = `
     <div style="
-      background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+      background:var(--s1);border:1px solid var(--b1);border-radius:var(--radius);
       padding:28px 24px;max-width:340px;width:100%;text-align:center;
     ">
       <div style="display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:rgba(255,82,82,0.1);margin:0 auto 12px"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>

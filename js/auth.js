@@ -28,6 +28,8 @@ export function updateAuthUI() {
 
   if (isLogged) {
     document.getElementById('userName').textContent = state.currentUser.nome;
+    const dotEl = document.querySelector('#userBadge .dot');
+    if (dotEl) dotEl.textContent = state.currentUser.nome.slice(0,2).toUpperCase();
   }
 
   // Persisti sessione
