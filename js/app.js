@@ -12,7 +12,7 @@ import { loadTornei, backToTornei, creaTorneo, openTorneo,
          iscrivitiTorneo, generaGironi, avanzaAFinale,
          openRegistraMatchTorneo, closeTorneoMatchModal, submitTorneoMatch,
          confirmTorneoMatch, generaFinale, chiudiTorneo } from './tornei.js';
-import { loadStats }     from './stats.js';
+import { loadStats, openTrofeo, closeTrofeoModal } from './stats.js';
 import { loadAdmin, adminAddPlayer, adminDeletePlayer, adminResetElo, adminDeleteMatch, adminEditMatch, adminLoadMatches, adminDeleteTorneo, adminIscriviTorneo, recalcAllElo, downloadPinBackup } from './admin.js';
 import { handleAvatarUpload } from './avatar.js';
 import { loadChallenges, sendChallenge, acceptChallenge,
@@ -67,47 +67,30 @@ window._skConfirm               = skConfirm;
 window._skSubmitFromFooter      = skSubmitFromFooter;
 window._scorekeeperModule       = { openScorekeeper };
 window._addScoreToMatch         = addScoreToMatch;
+window._openTrofeo              = openTrofeo;
+window._closeTrofeoModal        = closeTrofeoModal;
 
 // =============================================
-// NAV SECTION MAP
-// =============================================
-const navMap = {
-  'ranking':     () => loadRanking(),
-  'partite':     () => loadPartite(),
-  'tornei':      () => loadTornei(),
-  'statistiche': () => loadStats(),
-  'sfide':       () => loadChallenges(),
-  'admin':       () => loadAdmin(),
-};
-
-// =============================================
-// BOTTOM NAV
+// NAV
 // =============================================
 function setupNav() {
-  document.querySelectorAll('.nav-item[data-section]').forEach(btn => {
+  const navMap = {
+    'ranking':     () => loadRanking(),
+    'partite':     () => loadPartite(),
+    'tornei':      () => loadTornei(),
+    'statistiche': () => loadStats(),
+    'sfide':       () => loadChallenges(),
+    'admin':       () => loadAdmin(),
+  };
+
+  document.querySelectorAll('.sidebar-nav-btn[data-section]').forEach(btn => {
     btn.addEventListener('click', () => {
       const section = btn.dataset.section;
-
-      // aggiorna active
-      document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-
-      showSection(section);
+      showSection(section, btn);
       navMap[section]?.();
-
-      // mostra/nascondi FAB (solo su partite)
-      const fab = document.getElementById('fabBtn');
-      if (fab) fab.classList.toggle('hidden', section !== 'partite');
+      closeSidebar();
     });
   });
-}
-
-// =============================================
-// FAB
-// =============================================
-function setupFab() {
-  const fab = document.getElementById('fabBtn');
-  if (fab) fab.addEventListener('click', openScorekeeperForMatch);
 }
 
 // =============================================
@@ -116,7 +99,7 @@ function setupFab() {
 function setupHeader() {
   document.getElementById('loginBtn').addEventListener('click', openLoginModal);
   document.getElementById('logoutBtn').addEventListener('click', () =>
-    logout(() => { loadRanking(); updateChallengeBadge(); })
+    logout(() => { loadPartite(); updateChallengeBadge(); })
   );
   document.getElementById('helpBtn').addEventListener('click', () =>
     document.getElementById('helpModal').classList.add('open')
@@ -144,7 +127,7 @@ function setupAuthModal() {
 }
 
 // =============================================
-// PARTITE FORM
+// PARTITE
 // =============================================
 function setupPartite() {
   document.getElementById('btn-submit-match').addEventListener('click', openScorekeeperForMatch);
@@ -167,24 +150,30 @@ function setupAdmin() {
 async function init() {
   initModalDismiss();
   setupNav();
-  setupFab();
   setupHeader();
   setupAuthModal();
   setupPartite();
   setupAdmin();
 
+  // PWA
   await registerServiceWorker();
+
+  // Sessione
   await restoreSession();
 
+  // UI post-login
   if (state.currentUser) {
     await updatePushIcon();
     await updateChallengeBadge();
   }
 
+  // Ranking iniziale
   await loadRanking();
+
+  // Breaking News in home — in parallelo con il ranking
   loadHomeFeed();
 
-  // polling badge sfide ogni 30s
+  // Polling badge sfide ogni 30s
   setInterval(async () => {
     if (state.currentUser) await updateChallengeBadge();
   }, 30000);
