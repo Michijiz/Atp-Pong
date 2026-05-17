@@ -69,26 +69,45 @@ window._scorekeeperModule       = { openScorekeeper };
 window._addScoreToMatch         = addScoreToMatch;
 
 // =============================================
-// NAV
+// NAV SECTION MAP
+// =============================================
+const navMap = {
+  'ranking':     () => loadRanking(),
+  'partite':     () => loadPartite(),
+  'tornei':      () => loadTornei(),
+  'statistiche': () => loadStats(),
+  'sfide':       () => loadChallenges(),
+  'admin':       () => loadAdmin(),
+};
+
+// =============================================
+// BOTTOM NAV
 // =============================================
 function setupNav() {
-  const navMap = {
-    'ranking':     () => loadRanking(),
-    'partite':     () => loadPartite(),
-    'tornei':      () => loadTornei(),
-    'statistiche': () => loadStats(),
-    'sfide':       () => loadChallenges(),
-    'admin':       () => loadAdmin(),
-  };
-
-  document.querySelectorAll('.sidebar-nav-btn[data-section]').forEach(btn => {
+  document.querySelectorAll('.nav-item[data-section]').forEach(btn => {
     btn.addEventListener('click', () => {
       const section = btn.dataset.section;
+
+      // aggiorna active
+      document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
       showSection(section, btn);
       navMap[section]?.();
-      closeSidebar();
+
+      // mostra/nascondi FAB (solo su partite)
+      const fab = document.getElementById('fabBtn');
+      if (fab) fab.classList.toggle('hidden', section !== 'partite');
     });
   });
+}
+
+// =============================================
+// FAB
+// =============================================
+function setupFab() {
+  const fab = document.getElementById('fabBtn');
+  if (fab) fab.addEventListener('click', openScorekeeperForMatch);
 }
 
 // =============================================
@@ -97,7 +116,7 @@ function setupNav() {
 function setupHeader() {
   document.getElementById('loginBtn').addEventListener('click', openLoginModal);
   document.getElementById('logoutBtn').addEventListener('click', () =>
-    logout(() => { loadPartite(); updateChallengeBadge(); })
+    logout(() => { loadRanking(); updateChallengeBadge(); })
   );
   document.getElementById('helpBtn').addEventListener('click', () =>
     document.getElementById('helpModal').classList.add('open')
@@ -125,7 +144,7 @@ function setupAuthModal() {
 }
 
 // =============================================
-// PARTITE
+// PARTITE FORM
 // =============================================
 function setupPartite() {
   document.getElementById('btn-submit-match').addEventListener('click', openScorekeeperForMatch);
@@ -148,30 +167,24 @@ function setupAdmin() {
 async function init() {
   initModalDismiss();
   setupNav();
+  setupFab();
   setupHeader();
   setupAuthModal();
   setupPartite();
   setupAdmin();
 
-  // PWA
   await registerServiceWorker();
-
-  // Sessione
   await restoreSession();
 
-  // UI post-login
   if (state.currentUser) {
     await updatePushIcon();
     await updateChallengeBadge();
   }
 
-  // Ranking iniziale
   await loadRanking();
-
-  // Breaking News in home — in parallelo con il ranking
   loadHomeFeed();
 
-  // Polling badge sfide ogni 30s
+  // polling badge sfide ogni 30s
   setInterval(async () => {
     if (state.currentUser) await updateChallengeBadge();
   }, 30000);

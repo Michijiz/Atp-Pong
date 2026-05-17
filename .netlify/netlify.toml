@@ -9,7 +9,6 @@ redirects = []
 [build]
 publish = "C:\\Users\\miche\\OneDrive\\Documenti\\Progetti\\atp-pong"
 publishOrigin = "default"
-base = "C:\\Users\\miche\\OneDrive\\Documenti\\Progetti\\atp-pong"
 
 [build.environment]
 
