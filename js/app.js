@@ -92,7 +92,7 @@ function setupNav() {
       document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
 
-      showSection(section, btn);
+      showSection(section);
       navMap[section]?.();
 
       // mostra/nascondi FAB (solo su partite)
