@@ -450,12 +450,8 @@ async function _doSubmitTorneoMatch(s1, s2) {
 
   if (!isValidScore(s1, s2)) return toast('Punteggio non valido (21 con +2)', 'error');
 
-  // Guard: esiste già un match tra questi due giocatori specifici con un vincitore?
-  const existing = await get('matches',
-    `torneo_id=eq.${torneoId}&girone=eq.${girone}` +
-    `&or=(and(player1_id.eq.${p1id},player2_id.eq.${p2id}),and(player1_id.eq.${p2id},player2_id.eq.${p1id}))` +
-    `&select=id,winner_id`
-  );
+  // Guard: esiste già un match per questo girone/slot con un vincitore?
+  const existing = await get('matches', `torneo_id=eq.${torneoId}&girone=eq.${girone}&select=id,winner_id`);
   if (existing && existing.some(m => m.winner_id)) {
     _torneoMatchPending = null;
     return toast('Partita già registrata per questo slot', 'error');
@@ -884,4 +880,141 @@ async function _doChiudiTorneo() {
   toast('Torneo chiuso! Punti assegnati.');
   await renderTorneo();
   await loadRanking();
+}
+// =============================================
+// TABELLONE READ-ONLY (per Albo d'Oro)
+// =============================================
+
+export async function renderTorneoTabellone(torneoId) {
+  const [torneo] = await get('tournaments', `id=eq.${torneoId}&select=*`);
+  const [tPlayers, allMatches] = await Promise.all([
+    get('tournament_players', `torneo_id=eq.${torneoId}&select=*`),
+    get('matches', `torneo_id=eq.${torneoId}&confermata=eq.true&select=*`)
+  ]);
+
+  if (state.allPlayers.length === 0) {
+    state.allPlayers = await get('players', 'select=*');
+  }
+
+  const tipoColor = { amichevole: '#4ade80', importante: '#60a5fa', stagionale: 'var(--gold)' }[torneo.tipo] || 'var(--gold)';
+  const tipoClass = `tipo-${torneo.tipo}`;
+  const anno = new Date(torneo.data_inizio).getFullYear();
+
+  // Vincitore
+  const finaleMatch = allMatches.find(m => m.girone?.startsWith('finale') && m.winner_id);
+  const vincitore = finaleMatch ? state.allPlayers.find(p => p.id === finaleMatch.winner_id) : null;
+
+  let html = `
+  <div style="text-align:center;padding:20px 0 16px">
+    <div style="font-size:56px;line-height:1">🏆</div>
+    <div style="font-family:var(--font-display);font-size:28px;letter-spacing:2px;margin-top:8px">${torneo.nome}</div>
+    <div style="display:flex;justify-content:center;gap:8px;margin-top:8px;flex-wrap:wrap">
+      <span class="torneo-tipo-badge ${tipoClass}">${torneo.tipo}</span>
+      <span class="pill">${anno}</span>
+    </div>
+    ${vincitore ? `
+    <div style="margin-top:16px;padding:14px;background:linear-gradient(135deg,rgba(255,183,0,0.10),rgba(200,240,0,0.05));border:1px solid var(--gold);border-radius:var(--radius)">
+      <div style="font-size:22px">👑</div>
+      <div style="font-family:var(--font-display);font-size:26px;color:var(--gold);letter-spacing:2px;margin-top:4px">${vincitore.nome}</div>
+      <div style="color:var(--text2);font-size:12px;margin-top:2px">Campione</div>
+    </div>` : ''}
+  </div>`;
+
+  // Gironi
+  const gironi = {};
+  tPlayers.forEach(tp => {
+    const g = tp.girone || 'A';
+    if (!gironi[g]) gironi[g] = [];
+    gironi[g].push(tp);
+  });
+
+  const hasGironi = tPlayers.some(tp => tp.girone);
+  if (hasGironi) {
+    html += `
+    <div style="margin-bottom:8px">
+      <button onclick="var c=this.nextElementSibling;c.style.display=c.style.display==='none'?'block':'none';this.textContent=this.textContent.includes('▼')?'▶ Fase a Gironi':'▼ Fase a Gironi'"
+        style="display:flex;align-items:center;gap:8px;background:none;border:1px solid var(--border);color:var(--text2);font-size:13px;cursor:pointer;padding:8px 14px;border-radius:var(--radius);letter-spacing:0.5px;width:100%">
+        ▶ Fase a Gironi
+      </button>
+      <div style="display:none">`;
+
+    for (const [gNome, gPlayers] of Object.entries(gironi).sort()) {
+      const gMatches = allMatches.filter(m => m.girone === gNome);
+      const standings = calcolaStandingsGirone(gPlayers, gMatches);
+
+      html += `<div class="card" style="margin:10px 0 0">
+        <div class="girone-title">Girone ${gNome}</div>
+        <table class="girone-table">
+          <thead><tr><th>#</th><th>Giocatore</th><th>V</th><th>S</th><th>Pts</th><th>+/-</th></tr></thead>
+          <tbody>
+            ${standings.map((s, i) => {
+              const p = state.allPlayers.find(p => p.id === s.player_id);
+              const q = i < 2;
+              return `<tr class="${q ? 'qualificato' : ''}">
+                <td style="font-family:var(--font-mono);color:${q ? 'var(--accent)' : 'var(--text2)'}">${i+1}</td>
+                <td><div style="display:flex;align-items:center;gap:8px">${avatarEl(p?.nome||'?',24)} ${p?.nome||'?'}</div></td>
+                <td style="color:var(--accent);font-family:var(--font-mono)">${s.vinte}</td>
+                <td style="color:var(--accent2);font-family:var(--font-mono)">${s.perse}</td>
+                <td style="font-family:var(--font-mono);font-weight:700">${s.punti}</td>
+                <td style="font-family:var(--font-mono);color:var(--text2)">${s.pti_fatti}-${s.pti_subiti}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // Bracket read-only
+  html += renderBracketReadOnly(allMatches);
+
+  return html;
+}
+
+function renderBracketReadOnly(allMatches) {
+  const rounds = {};
+  allMatches.forEach(m => {
+    if (!m.girone) return;
+    const roundName = m.girone.split('_')[0];
+    if (!['quarti','semifinale','finale'].includes(roundName)) return;
+    if (!rounds[roundName]) rounds[roundName] = [];
+    rounds[roundName].push(m);
+  });
+
+  const roundOrder = ['quarti', 'semifinale', 'finale'];
+  const presentRounds = roundOrder.filter(r => rounds[r]);
+  if (presentRounds.length === 0) return '';
+
+  let html = `<div style="margin-top:16px"><div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px">Bracket</div>`;
+  html += `<div class="bracket-container"><div class="bracket">`;
+
+  for (const roundName of presentRounds) {
+    const rMatches = rounds[roundName];
+    const label = roundName === 'finale' ? 'FINALE' : roundName === 'semifinale' ? 'SEMIFINALI' : 'QUARTI';
+    html += `<div class="bracket-round"><div class="bracket-round-title">${label}</div>`;
+
+    rMatches.forEach(m => {
+      const p1 = state.allPlayers.find(p => p.id === m.player1_id);
+      const p2 = state.allPlayers.find(p => p.id === m.player2_id);
+      const s1 = m.punteggio1 ?? '';
+      const s2 = m.punteggio2 ?? '';
+
+      html += `<div style="margin-bottom:16px">
+        <div class="bracket-match">
+          <div class="bracket-player ${m.winner_id === m.player1_id ? 'winner' : ''}">
+            <span>${p1?.nome || 'TBD'}</span><span class="bracket-score">${s1}</span>
+          </div>
+          <div class="bracket-player ${m.winner_id === m.player2_id ? 'winner' : ''}">
+            <span>${p2?.nome || 'TBD'}</span><span class="bracket-score">${s2}</span>
+          </div>
+        </div>
+      </div>`;
+    });
+
+    html += `</div>`;
+  }
+
+  html += `</div></div></div>`;
+  return html;
 }
