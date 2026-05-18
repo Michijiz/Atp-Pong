@@ -213,15 +213,15 @@ body::after {
 /* RANKING TABLE */
 .ranking-table { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .table-header {
-  display: grid; grid-template-columns: 56px 1fr 90px 90px 110px 50px 50px 64px;
-  gap: 8px; padding: 12px 20px; background: var(--surface2);
+  display: grid; grid-template-columns: 44px 1fr 80px 80px 60px;
+  gap: 8px; padding: 12px 16px; background: var(--surface2);
   border-bottom: 1px solid var(--border);
   font-size: 10px; font-weight: 700; color: var(--text2);
   letter-spacing: 1px; text-transform: uppercase;
 }
 .player-row {
-  display: grid; grid-template-columns: 56px 1fr 90px 90px 110px 50px 50px 64px;
-  gap: 8px; padding: 22px 20px; border-bottom: 1px solid var(--border);
+  display: grid; grid-template-columns: 44px 1fr 80px 80px 60px;
+  gap: 8px; padding: 22px 16px; border-bottom: 1px solid var(--border);
   align-items: center; cursor: pointer; transition: all 0.18s; position: relative;
 }
 .player-row:hover { background: rgba(255,107,43,0.04); border-bottom-color: rgba(255,107,43,0.15); }
@@ -496,11 +496,8 @@ body::after {
 
 /* MOBILE */
 @media (max-width: 600px) {
-  .table-header, .player-row { grid-template-columns: 36px 1fr 68px 80px 52px; gap: 6px; padding: 16px 12px; }
-  .table-header > *:nth-child(4), .player-row > *:nth-child(4),
-  .table-header > *:nth-child(6), .player-row > *:nth-child(6),
-  .table-header > *:nth-child(7), .player-row > *:nth-child(7),
-  .table-header > *:nth-child(8), .player-row > *:nth-child(8) { display: none; }
+  .table-header, .player-row { grid-template-columns: 36px 1fr 64px 64px; gap: 6px; padding: 16px 12px; }
+  .table-header > *:nth-child(5), .player-row > *:nth-child(5) { display: none; }
   .player-name { font-size: 15px; }
   .elo-val { font-size: 13px; }
   .total-val { font-size: 15px; }
@@ -901,3 +898,146 @@ body::after {
 .bacheca-meta { font-size: 11px; color: var(--text3); margin-top: 4px; display: flex; align-items: center; gap: 8px; }
 .bacheca-del { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 12px; padding: 0; }
 .bacheca-del:hover { color: var(--accent2); }
+/* =============================================
+   PROFILO MODAL — classi pmod-*
+   ============================================= */
+.pmod-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px 10px; border-bottom: 1px solid var(--border);
+  margin: -28px -28px 0; position: sticky; top: -28px;
+  background: var(--surface); z-index: 10;
+}
+.pmod-bar-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--text2); }
+.pmod-close {
+  background: none; border: none; color: var(--text2); cursor: pointer;
+  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; transition: background 0.15s;
+}
+.pmod-close:hover { background: var(--surface2); color: var(--text); }
+
+.pmod-cover {
+  height: 72px; margin: 16px -28px 0;
+  background: linear-gradient(135deg, rgba(255,107,43,0.12) 0%, rgba(0,119,204,0.08) 100%);
+  position: relative; overflow: hidden;
+}
+.pmod-rank-bg {
+  position: absolute; right: 16px; bottom: -8px;
+  font-family: var(--font-display); font-size: 80px; font-weight: 700; line-height: 1;
+  color: var(--accent); opacity: 0.08; letter-spacing: -2px; pointer-events: none;
+}
+
+.pmod-hero {
+  display: flex; align-items: flex-end; gap: 14px;
+  margin-top: -32px; padding: 0 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+.pmod-av-wrap { position: relative; flex-shrink: 0; }
+.pmod-av {
+  width: 68px; height: 68px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; font-weight: 700;
+  border: 3px solid var(--surface);
+  overflow: hidden;
+}
+.pmod-cam {
+  position: absolute; bottom: 0; right: 0;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border: 2px solid var(--surface);
+}
+.pmod-name { font-family: var(--font-display); font-size: 26px; letter-spacing: 1px; line-height: 1; }
+.pmod-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.pmod-elo { font-family: var(--font-mono); font-size: 12px; color: var(--accent); font-weight: 700; }
+.pmod-pos { font-family: var(--font-mono); font-size: 12px; color: var(--text2); }
+
+.pmod-bio {
+  font-size: 13px; color: var(--text2); font-style: italic;
+  padding: 12px 0; border-bottom: 1px solid var(--border); line-height: 1.5;
+}
+
+.pmod-stats {
+  display: grid; grid-template-columns: repeat(4,1fr);
+  gap: 8px; padding: 14px 0; border-bottom: 1px solid var(--border);
+}
+.pmod-stat { text-align: center; }
+.pmod-sv { display: block; font-family: var(--font-mono); font-size: 20px; font-weight: 800; line-height: 1; }
+.pmod-sl { display: block; font-size: 9px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px; }
+
+.pmod-section { padding: 14px 0; border-bottom: 1px solid var(--border); }
+.pmod-section:last-child { border-bottom: none; }
+.pmod-pb { padding-bottom: 0; }
+
+.pmod-chart { width: 100%; overflow: hidden; }
+
+.pmod-match {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.pmod-match:last-child { border-bottom: none; }
+.pmod-result {
+  width: 20px; height: 20px; border-radius: 5px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 800;
+}
+.pmod-result.win  { background: rgba(255,107,43,0.12); color: var(--accent); }
+.pmod-result.loss { background: rgba(229,62,62,0.12);  color: var(--accent2); }
+.pmod-opp { flex: 1; font-size: 13px; }
+.pmod-score { font-family: var(--font-mono); font-size: 12px; color: var(--text2); }
+.pmod-date { font-size: 11px; color: var(--text3); flex-shrink: 0; }
+
+.pmod-h2h {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 0; border-bottom: 1px solid var(--border);
+}
+.pmod-h2h:last-child { border-bottom: none; }
+.pmod-h2h-bar {
+  width: 80px; height: 5px; border-radius: 3px;
+  background: var(--border2); overflow: hidden; flex-shrink: 0;
+}
+.pmod-h2h-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.4s; }
+.pmod-h2h-rec { font-family: var(--font-mono); font-size: 11px; display: flex; gap: 2px; }
+
+.pmod-sfida-btn {
+  width: 100%; padding: 13px; border: none; border-radius: 10px;
+  background: var(--accent); color: #fff;
+  font-family: var(--font-body); font-size: 14px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all 0.2s;
+}
+.pmod-sfida-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(255,107,43,0.3); }
+
+/* =============================================
+   RANKING PODIO — pod-*
+   ============================================= */
+.pod-card {
+  flex: 1; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 10px; text-align: center;
+  transition: all 0.2s; max-width: 140px;
+}
+.pod-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.pod-1 { border-color: var(--gold); order: 2; }
+.pod-2 { order: 1; }
+.pod-3 { order: 3; }
+.pod-pos { font-size: 16px; margin-bottom: 8px; }
+.pod-av {
+  width: 52px; height: 52px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 700; margin: 0 auto 8px;
+  overflow: hidden;
+}
+.pod-name { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pod-elo { font-family: var(--font-mono); font-size: 11px; color: var(--accent); margin-top: 2px; }
+.pod-pts { font-family: var(--font-mono); font-size: 10px; color: var(--gold); margin-top: 1px; }
+
+/* =============================================
+   FORM DOTS & TREND
+   ============================================= */
+.form-dots { display: flex; gap: 2px; margin-top: 3px; }
+.form-dot { width: 6px; height: 6px; border-radius: 50%; }
+.form-dot.w { background: var(--accent); }
+.form-dot.l { background: var(--accent2); }
+.trend-val { font-family: var(--font-mono); font-size: 12px; text-align: right; }
+.trend-up   { color: var(--accent); }
+.trend-down { color: var(--accent2); }
+.trend-eq   { color: var(--text3); }
