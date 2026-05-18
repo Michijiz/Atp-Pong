@@ -1,7 +1,7 @@
 import { get, post, patch } from './api.js';
 import { state } from './state.js';
 import { toast, openModal, closeModal, confirmDialog } from './ui.js';
-import { avatarEl } from './avatar.js';
+import { avatarEl, getAvatarUrl } from './avatar.js';
 import { getKFactor } from './elo.js';
 import { isValidScore } from './elo.js';
 import { TORNEO_CONFIG } from './config.js';
@@ -181,7 +181,7 @@ async function renderTorneo() {
       <div class="card-title">Iscritti (${tPlayers.length})</div>
       ${tPlayers.map(tp => {
         const p = state.allPlayers.find(p => p.id === tp.player_id);
-        return `<div class="match-item"><div class="match-players">${avatarEl(p?.nome||'?')} <span>${p?.nome||'?'}</span></div></div>`;
+        return `<div class="match-item"><div class="match-players">${avatarEl(p?.nome||'?', 32, getAvatarUrl(p?.id))} <span>${p?.nome||'?'}</span></div></div>`;
       }).join('')}
       ${isAdmin && t.stato === 'in_corso' ? (tPlayers.length >= 4
         ? `<button class="btn btn-primary" style="margin-top:12px" onclick="window._generaGironi('${t.id}')">⚡ Genera Gironi</button>`
@@ -221,7 +221,7 @@ async function renderTorneo() {
               const qualificato = i < nQualificati;
               return `<tr class="${qualificato ? 'qualificato' : ''}">
                 <td style="font-family:var(--font-mono);color:${qualificato ? 'var(--accent)' : 'var(--text2)'}">${i+1}</td>
-                <td><div style="display:flex;align-items:center;gap:8px">${avatarEl(p?.nome||'?',24)} ${p?.nome||'?'}</div></td>
+                <td><div style="display:flex;align-items:center;gap:8px">${avatarEl(p?.nome||'?', 24, getAvatarUrl(p?.id))} ${p?.nome||'?'}</div></td>
                 <td style="color:var(--accent);font-family:var(--font-mono)">${s.vinte}</td>
                 <td style="color:var(--accent2);font-family:var(--font-mono)">${s.perse}</td>
                 <td style="font-family:var(--font-mono);font-weight:700">${s.punti}</td>
@@ -378,12 +378,12 @@ function renderPartitiGirone(gPlayers, gMatchesAll, torneo, isAdmin) {
 
     if (!match) {
       return `<div class="torneo-match-item pending">
-        <div class="torneo-match-player">${avatarEl(p1?.nome||'?',22)} <span>${p1?.nome||'?'}</span></div>
+        <div class="torneo-match-player">${avatarEl(p1?.nome||'?',22,getAvatarUrl(p1?.id))} <span>${p1?.nome||'?'}</span></div>
         <div style="text-align:center">
           <div style="font-size:10px;color:var(--text3);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">vs</div>
           ${canRegister ? `<button class="btn-sm btn-sm-confirm" onclick="window._openRegistraMatchTorneo('${torneo.id}','${p1id}','${p2id}','${gPlayers[0].girone}')">Registra</button>` : ''}
         </div>
-        <div class="torneo-match-player right">${avatarEl(p2?.nome||'?',22)} <span>${p2?.nome||'?'}</span></div>
+        <div class="torneo-match-player right">${avatarEl(p2?.nome||'?',22,getAvatarUrl(p2?.id))} <span>${p2?.nome||'?'}</span></div>
       </div>`;
     }
 
@@ -398,19 +398,19 @@ function renderPartitiGirone(gPlayers, gMatchesAll, torneo, isAdmin) {
          state.currentUser.id !== match.registrata_da &&
          (state.currentUser.id === p1id || state.currentUser.id === p2id));
       return `<div class="torneo-match-item pending" style="opacity:0.85">
-        <div class="torneo-match-player" style="color:var(--text2)">${avatarEl(p1?.nome||'?',22)} <span>${p1?.nome||'?'}</span></div>
+        <div class="torneo-match-player" style="color:var(--text2)">${avatarEl(p1?.nome||'?',22,getAvatarUrl(p1?.id))} <span>${p1?.nome||'?'}</span></div>
         <div style="text-align:center">
           <div class="torneo-match-score-big" style="color:var(--text2)">${s1 ?? '?'} — ${s2 ?? '?'}</div>
           ${canConfirm ? `<button class="btn-sm btn-sm-confirm" style="margin-top:5px" onclick="window._confirmTorneoMatch('${match.id}')">✓ Conferma</button>` : '<div style="font-size:10px;color:var(--gold);margin-top:3px">⏳ in attesa</div>'}
         </div>
-        <div class="torneo-match-player right" style="color:var(--text2)">${avatarEl(p2?.nome||'?',22)} <span>${p2?.nome||'?'}</span></div>
+        <div class="torneo-match-player right" style="color:var(--text2)">${avatarEl(p2?.nome||'?',22,getAvatarUrl(p2?.id))} <span>${p2?.nome||'?'}</span></div>
       </div>`;
     }
 
     return `<div class="torneo-match-item">
-      <div class="torneo-match-player">${avatarEl(p1?.nome||'?',26)} <span class="${w1 ? 'torneo-match-winner' : 'torneo-match-loser'}">${p1?.nome||'?'}</span></div>
+      <div class="torneo-match-player">${avatarEl(p1?.nome||'?',26,getAvatarUrl(p1?.id))} <span class="${w1 ? 'torneo-match-winner' : 'torneo-match-loser'}">${p1?.nome||'?'}</span></div>
       <div class="torneo-match-score-big">${s1} — ${s2}</div>
-      <div class="torneo-match-player right">${avatarEl(p2?.nome||'?',26)} <span class="${w2 ? 'torneo-match-winner' : 'torneo-match-loser'}">${p2?.nome||'?'}</span></div>
+      <div class="torneo-match-player right">${avatarEl(p2?.nome||'?',26,getAvatarUrl(p2?.id))} <span class="${w2 ? 'torneo-match-winner' : 'torneo-match-loser'}">${p2?.nome||'?'}</span></div>
     </div>`;
   }).join('');
 }
