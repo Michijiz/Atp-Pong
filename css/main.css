@@ -6,7 +6,7 @@
   --s3:      #E4E9F2;
   --b1:      #DDE3ED;
   --b2:      #C8D3E0;
-  --accent:  #fff82b;
+  --accent:  #fe7812;
   --accent2: #E53E3E;
   --accent3: #0077CC;
   --gold:    #D4850A;
@@ -274,7 +274,7 @@ body::after {
 .form-dots { display: flex; gap: 3px; margin-top: 5px; }
 .form-dot { width: 6px; height: 6px; border-radius: 50%; }
 .form-dot.w { background: #16a34a; }
-.form-dot.l { background: var(--accent2); }
+.form-dot.l { background: green; }
 .form-dot.n { background: var(--b2); }
 
 .elo-val   { font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: var(--accent); text-align: right; }
