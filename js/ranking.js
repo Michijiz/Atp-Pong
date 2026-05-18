@@ -10,7 +10,8 @@ import { avatarEl, getAvatarUrl, getAvatarColor, handleAvatarUpload } from './av
 export async function loadRanking() {
   document.getElementById('rankingBody').innerHTML =
     '<div class="loading"><div class="spinner"></div> Caricamento...</div>';
- document.getElementById('rankingPodium')?.innerHTML = '';
+const podium = document.getElementById('rankingPodium');
+if (podium) podium.innerHTML = '';
 
   const [players, tPoints] = await Promise.all([
     get('players', 'order=elo.desc&select=*'),
