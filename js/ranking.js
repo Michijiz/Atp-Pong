@@ -188,19 +188,12 @@ async function loadFormDots(players) {
 
 // =============================================
 // PROFILO GIOCATORE — modal redesignato
-// Bug fix: l'HTML ha due #profileModal — prendiamo sempre l'ultimo
 // =============================================
 export async function showProfile(playerId) {
-  // Prende l'ultimo elemento con quell'id (il secondo nell'HTML, quello corretto)
-  const allModals = document.querySelectorAll('#profileModal');
-  const modal     = allModals[allModals.length - 1];
-  const contentEl = modal?.querySelector('[id="profileContent"]') || modal?.querySelector('div');
+  openModal('profileModal');
+  document.getElementById('profileContent').innerHTML =
+    '<div class="loading"><div class="spinner"></div> Caricamento...</div>';
 
-  if (!modal) return;
-  modal.classList.add('open');
-  if (contentEl) contentEl.innerHTML = '<div class="loading"><div class="spinner"></div> Caricamento...</div>';
-
-  // Fetch paralleli — include tornei per trovare vittorie
   const [player, matches, eloHist, myTournamentPts, tornei] = await Promise.all([
     get('players', `id=eq.${playerId}&select=*`).then(r => r[0]),
     get('matches', `or=(player1_id.eq.${playerId},player2_id.eq.${playerId})&confermata=eq.true&order=data.desc&select=*`),
@@ -210,12 +203,13 @@ export async function showProfile(playerId) {
   ]);
 
   if (!player) {
-    if (contentEl) contentEl.innerHTML = '<p style="padding:20px;color:var(--text2)">Giocatore non trovato</p>';
+    document.getElementById('profileContent').innerHTML =
+      '<p style="padding:20px;color:var(--text2)">Giocatore non trovato</p>';
     return;
   }
   if (!state.allPlayers.length) state.allPlayers = await get('players', 'select=*');
 
-  // Calcola tornei vinti: verifica che il player sia il primo in classifica punti per quel torneo
+  // Tornei vinti: player ha il punteggio massimo in quel torneo
   const torneiVinti = [];
   const torneiIds = myTournamentPts.map(tp => tp.torneo_id).filter(Boolean);
   if (torneiIds.length > 0) {
@@ -234,14 +228,13 @@ export async function showProfile(playerId) {
   const winPct = player.partite_giocate > 0
     ? Math.round(player.vinte / player.partite_giocate * 100) : 0;
 
-  // Rank
   const rank = state.allPlayers
     .filter(p => p.partite_giocate > 0)
-    .sort((a,b) => b.elo - a.elo)
+    .sort((a, b) => b.elo - a.elo)
     .findIndex(p => p.id === playerId) + 1;
   const rankLabel = getRankLabel(rank);
 
-  // H2H — top 5 per numero di partite
+  // H2H — top 5 per volume
   const h2h = {};
   for (const m of matches) {
     const oppId = m.player1_id === playerId ? m.player2_id : m.player1_id;
@@ -250,22 +243,23 @@ export async function showProfile(playerId) {
   }
   const h2hEntries = Object.entries(h2h).sort((a, b) => (b[1].v + b[1].s) - (a[1].v + a[1].s));
 
-  // ELO chart
+  // ELO chart SVG
   const eloData = eloHist.map(e => e.elo);
   if (!eloData.length) eloData.push(player.elo);
   const minE  = Math.min(...eloData) - 10;
   const maxE  = Math.max(...eloData) + 10;
   const range = maxE - minE || 1;
   const W = 280, H = 48;
-  const pts = eloData.map((e, i) => {
+  const svgPts = eloData.map((e, i) => {
     const x = eloData.length > 1 ? i / (eloData.length - 1) * W : W / 2;
     const y = H - ((e - minE) / range) * H;
     return `${x},${y}`;
   }).join(' ');
-  const lastY     = H - ((eloData[eloData.length - 1] - minE) / range) * H;
-  const eloColor  = eloData.length > 1 && eloData[eloData.length-1] >= eloData[0] ? 'var(--accent)' : 'var(--accent2)';
-  const gradId    = `eg_${playerId.replace(/-/g,'').slice(0,8)}`;
-  const chartSvg  = eloData.length > 1 ? `
+  const lastY    = H - ((eloData[eloData.length - 1] - minE) / range) * H;
+  const eloColor = eloData.length > 1 && eloData[eloData.length-1] >= eloData[0]
+    ? 'var(--accent)' : 'var(--accent2)';
+  const gradId   = `eg_${playerId.replace(/-/g,'').slice(0,8)}`;
+  const chartSvg = eloData.length > 1 ? `
     <svg viewBox="0 0 ${W} ${H+2}" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block">
       <defs>
         <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
@@ -273,35 +267,29 @@ export async function showProfile(playerId) {
           <stop offset="100%" stop-color="${eloColor}" stop-opacity="0"/>
         </linearGradient>
       </defs>
-      <polygon points="0,${H} ${pts} ${W},${H}" fill="url(#${gradId})"/>
-      <polyline points="${pts}" fill="none" stroke="${eloColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <polygon points="0,${H} ${svgPts} ${W},${H}" fill="url(#${gradId})"/>
+      <polyline points="${svgPts}" fill="none" stroke="${eloColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
       <circle cx="${W}" cy="${lastY}" r="3" fill="${eloColor}"/>
     </svg>` : '';
 
-  // Avatar
   const [bg]     = getAvatarColor(player.nome);
   const initials  = player.nome.slice(0,2).toUpperCase();
   const isOwner   = state.currentUser?.id === player.id || state.currentUser?.ruolo === 'admin';
   const avatarUrl = getAvatarUrl(player.id);
   const canChallenge = state.currentUser && state.currentUser.id !== player.id;
+  const closeJs  = `document.getElementById('profileModal').classList.remove('open')`;
 
-  // Helper chiudi modal
-  const closeModalJs = `document.querySelectorAll('#profileModal')[document.querySelectorAll('#profileModal').length-1].classList.remove('open')`;
-
-  // ── RENDER ────────────────────────────────────
-  if (!contentEl) return;
-
-  contentEl.innerHTML = `
+  document.getElementById('profileContent').innerHTML = `
 
     <!-- TOPBAR sticky -->
     <div class="pmod-bar">
       <span class="pmod-bar-title">Profilo</span>
-      <button class="pmod-close" onclick="${closeModalJs}">
+      <button class="pmod-close" onclick="${closeJs}">
         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
 
-    <!-- HERO: avatar + nome + rank + trofei — stesso density del ranking -->
+    <!-- HERO: stesso density row ranking -->
     <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid var(--b1)">
       <div style="position:relative;flex-shrink:0">
         <div style="width:54px;height:54px;border-radius:50%;border:2px solid ${bg}44;overflow:hidden;background:${bg}18;color:${bg};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800">
@@ -388,7 +376,7 @@ export async function showProfile(playerId) {
         const opp = state.allPlayers.find(p => p.id === oppId);
         const tot = rec.v + rec.s;
         const pct = Math.round(rec.v / tot * 100);
-        return `<div style="display:flex;align-items:center;gap:9px;padding:6px 0;${idx < Math.min(h2hEntries.length,5)-1 ? 'border-bottom:1px solid rgba(30,40,54,0.5)' : ''}">
+        return `<div style="display:flex;align-items:center;gap:9px;padding:6px 0;${idx < Math.min(h2hEntries.length, 5)-1 ? 'border-bottom:1px solid rgba(30,40,54,0.5)' : ''}">
           <div style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${opp?.nome || '?'}</div>
           <div style="width:56px;height:4px;border-radius:100px;background:rgba(255,77,77,0.2);overflow:hidden;flex-shrink:0">
             <div style="width:${pct}%;height:100%;background:var(--accent);border-radius:100px"></div>
@@ -403,9 +391,9 @@ export async function showProfile(playerId) {
     <!-- SFIDA CTA -->
     ${canChallenge ? `
     <div style="padding:14px 14px 20px">
-      <button style="width:100%;padding:12px;border-radius:11px;background:var(--accent);color:var(--bg);border:none;font-size:13px;font-weight:800;letter-spacing:0.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity 0.15s"
-        onmouseenter="this.style.opacity='0.88'" onmouseleave="this.style.opacity='1'"
-        onclick="window._sendChallenge('${player.id}');${closeModalJs}">
+      <button
+        style="width:100%;padding:12px;border-radius:11px;background:var(--accent);color:var(--bg);border:none;font-size:13px;font-weight:800;letter-spacing:0.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"
+        onclick="window._sendChallenge('${player.id}');${closeJs}">
         ⚔️ Sfida ${player.nome}
       </button>
     </div>` : '<div style="height:16px"></div>'}
