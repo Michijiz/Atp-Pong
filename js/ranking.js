@@ -141,7 +141,6 @@ if (podium) podium.innerHTML = '';
         </div>
         <div class="elo-val">${p.elo}</div>
         <div class="pts-val">${p.totale}</div>
-        <div class="trend-val trend-eq" id="trend-${p.id}">—</div>
       </div>`;
     }).join('');
 
@@ -166,7 +165,6 @@ if (podium) podium.innerHTML = '';
           </div>
           <div class="elo-val" style="color:var(--text2)">—</div>
           <div class="pts-val">—</div>
-          <div class="trend-val trend-eq">—</div>
         </div>`;
       }).join('')}`;
     document.getElementById('rankingBody').insertAdjacentHTML('beforeend', unrankedHtml);
