@@ -14,46 +14,26 @@ import { openScorekeeper } from './Scorekeeper.js';
 
 export async function loadPartite() {
   const isLogged = !!state.currentUser;
-  document.getElementById('newMatchSection').style.display  = isLogged ? 'block' : 'none';
-  document.getElementById('pendingSection').style.display   = isLogged ? 'block' : 'none';
+  document.getElementById('pendingSection').style.display = isLogged ? 'block' : 'none';
 
   if (isLogged) {
     await loadPendingMatches();
-    await populateMatchSelects();
+    // Popola i select del FAB modal
+    if (state.allPlayers.length === 0) {
+      state.allPlayers = await get('players', 'order=nome.asc&select=*');
+    }
+    const sel = document.getElementById('fab_p2');
+    if (sel) {
+      const others = state.allPlayers.filter(p => p.id !== state.currentUser.id);
+      sel.innerHTML = '<option value="">Seleziona avversario...</option>' +
+        others.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
+    }
   }
 
   await loadMatchHistory();
 }
 
-export async function populateMatchSelects() {
-  if (state.allPlayers.length === 0) {
-    state.allPlayers = await get('players', 'order=nome.asc&select=*');
-  }
 
-  ['match_p1', 'match_p2'].forEach(id => {
-    const sel = document.getElementById(id);
-    sel.innerHTML = '<option value="">Seleziona...</option>';
-    state.allPlayers.forEach(p => sel.innerHTML += `<option value="${p.id}">${p.nome}</option>`);
-  });
-
-  if (state.currentUser) {
-    const isAdmin = state.currentUser.ruolo === 'admin';
-    const p1Sel = document.getElementById('match_p1');
-    p1Sel.value = state.currentUser.id;
-    // Non-admin: blocca il proprio slot così non può registrare a nome di altri
-    p1Sel.disabled = !isAdmin;
-    updateMatchPlayers();
-  }
-}
-
-export function updateMatchPlayers() {
-  const p1Val  = document.getElementById('match_p1').value;
-  const p2Val  = document.getElementById('match_p2').value;
-  const p1Name = state.allPlayers.find(p => p.id === p1Val)?.nome || 'P1';
-  const p2Name = state.allPlayers.find(p => p.id === p2Val)?.nome || 'P2';
-  document.getElementById('score1Label').textContent = `Punti ${p1Name}`;
-  document.getElementById('score2Label').textContent = `Punti ${p2Name}`;
-}
 
 export async function loadPendingMatches() {
   if (!state.currentUser) return;
@@ -185,35 +165,6 @@ export async function confirmMatch(matchId, confirm) {
   await loadRanking();
 }
 
-export async function submitMatchClassic() {
-  if (!state.currentUser) return toast('Devi essere loggato', 'error');
-  const p1Id = document.getElementById('match_p1').value;
-  const p2Id = document.getElementById('match_p2').value;
-  const s1   = parseInt(document.getElementById('match_score1').value);
-  const s2   = parseInt(document.getElementById('match_score2').value);
-  if (!p1Id || !p2Id)         return toast('Seleziona entrambi i giocatori', 'error');
-  if (p1Id === p2Id)          return toast('I giocatori devono essere diversi', 'error');
-  if (isNaN(s1) || isNaN(s2)) return toast('Inserisci i punteggi', 'error');
-  await submitMatch(p1Id, p2Id, s1, s2);
-}
-
-export function openScorekeeperForMatch() {
-  if (!state.currentUser) return toast('Devi essere loggato', 'error');
-
-  const p1Id   = document.getElementById('match_p1').value;
-  const p2Id   = document.getElementById('match_p2').value;
-  if (!p1Id || !p2Id)  return toast('Seleziona entrambi i giocatori prima', 'error');
-  if (p1Id === p2Id)   return toast('I giocatori devono essere diversi', 'error');
-
-  const p1Name = state.allPlayers.find(p => p.id === p1Id)?.nome || 'P1';
-  const p2Name = state.allPlayers.find(p => p.id === p2Id)?.nome || 'P2';
-
-  openScorekeeper({
-    p1Name, p2Name,
-    onConfirm: (s1, s2) => submitMatch(p1Id, p2Id, s1, s2)
-  });
-}
-
 export async function submitMatch(p1Id, p2Id, s1, s2) {
   if (!isValidScore(s1, s2)) return toast('Punteggio non valido (21 con +2 in caso di parità)', 'error');
 
@@ -249,8 +200,6 @@ export async function submitMatch(p1Id, p2Id, s1, s2) {
     toast("Partita inviata! In attesa di conferma dell'avversario.");
   }
 
-  document.getElementById('match_score1').value = '';
-  document.getElementById('match_score2').value = '';
   await loadPartite();
   await loadRanking();
 }
