@@ -7,7 +7,7 @@ import { initModalDismiss, showSection, toast } from './ui.js';
 import { restoreSession, openLoginModal, showLoginForm, showRegisterForm,
          doLogin, doRegister, afterRegister, logout } from './auth.js';
 import { loadRanking, showProfile }      from './ranking.js';
-import { loadPartite, updateMatchPlayers, submitMatch, submitMatchClassic, openScorekeeperForMatch, confirmMatch, loadMatchHistory, addScoreToMatch } from './matches.js';
+import { loadPartite, submitMatch, confirmMatch, loadMatchHistory, addScoreToMatch } from './matches.js';
 import { loadTornei, backToTornei, creaTorneo, openTorneo,
          iscrivitiTorneo, generaGironi, avanzaAFinale,
          openRegistraMatchTorneo, closeTorneoMatchModal, submitTorneoMatch,
@@ -31,7 +31,6 @@ window._showProfile             = showProfile;
 window._backToTornei            = backToTornei;
 window._confirmMatch            = confirmMatch;
 window._loadMatchHistory        = loadMatchHistory;
-window._updateMatchPlayers      = updateMatchPlayers;
 window._adminDeletePlayer       = adminDeletePlayer;
 window._adminResetElo           = adminResetElo;
 window._adminDeleteMatch        = adminDeleteMatch;
@@ -154,14 +153,6 @@ function setupNav() {
 }
 
 // =============================================
-// FAB
-// =============================================
-function setupFab() {
-  const fab = document.getElementById('fabBtn');
-  if (fab) fab.addEventListener('click', openScorekeeperForMatch);
-}
-
-// =============================================
 // HEADER
 // =============================================
 function setupHeader() {
@@ -195,16 +186,6 @@ function setupAuthModal() {
 }
 
 // =============================================
-// PARTITE FORM
-// =============================================
-function setupPartite() {
-  document.getElementById('btn-submit-match').addEventListener('click', openScorekeeperForMatch);
-  document.getElementById('btn-submit-match-classic').addEventListener('click', submitMatchClassic);
-  document.getElementById('match_p1').addEventListener('change', updateMatchPlayers);
-  document.getElementById('match_p2').addEventListener('change', updateMatchPlayers);
-}
-
-// =============================================
 // ADMIN
 // =============================================
 function setupAdmin() {
@@ -218,10 +199,8 @@ function setupAdmin() {
 async function init() {
   initModalDismiss();
   setupNav();
-  setupFab();
   setupHeader();
   setupAuthModal();
-  setupPartite();
   setupAdmin();
 
   await registerServiceWorker();
