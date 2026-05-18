@@ -13,7 +13,7 @@ import { loadTornei, backToTornei, creaTorneo, openTorneo,
          openRegistraMatchTorneo, closeTorneoMatchModal, submitTorneoMatch,
          confirmTorneoMatch, generaFinale, chiudiTorneo } from './tornei.js';
 import { loadStats }     from './stats.js';
-import { loadAdmin, adminAddPlayer, adminDeletePlayer, adminResetElo, adminDeleteMatch, adminEditMatch, adminLoadMatches, adminDeleteTorneo, adminIscriviTorneo, recalcAllElo, downloadPinBackup } from './admin.js';
+import { loadAdmin, adminAddPlayer, adminDeletePlayer, adminResetElo, adminResetPin, adminDeleteMatch, adminEditMatch, adminLoadMatches, adminDeleteTorneo, adminIscriviTorneo, recalcAllElo, downloadPinBackup } from './admin.js';
 import { handleAvatarUpload } from './avatar.js';
 import { loadChallenges, sendChallenge, acceptChallenge,
          refuseChallenge, cancelChallenge } from './challenges.js';
@@ -33,6 +33,7 @@ window._confirmMatch            = confirmMatch;
 window._loadMatchHistory        = loadMatchHistory;
 window._adminDeletePlayer       = adminDeletePlayer;
 window._adminResetElo           = adminResetElo;
+window._adminResetPin           = adminResetPin;
 window._adminDeleteMatch        = adminDeleteMatch;
 window._adminEditMatch          = adminEditMatch;
 window._adminLoadMatches        = adminLoadMatches;

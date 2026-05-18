@@ -27,6 +27,7 @@ export async function loadAdmin() {
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
         <button class="btn-sm btn-sm-confirm" onclick="window._adminResetElo('${p.id}','${p.nome}')">Reset Elo</button>
+        <button class="btn-sm btn-sm-confirm" onclick="window._adminResetPin('${p.id}','${p.nome}')">🔑 PIN</button>
         <button class="btn-sm btn-sm-deny"    onclick="window._adminDeletePlayer('${p.id}','${p.nome}')">Elimina</button>
       </div>
     </div>
@@ -222,6 +223,15 @@ export async function adminResetElo(id, nome) {
     toast(`Elo di ${nome} resettato`);
     await loadAdmin();
     await loadRanking();
+  });
+}
+
+export async function adminResetPin(id, nome) {
+  confirmDialog(`Resettare il PIN di ${nome}? Verrà generato un nuovo PIN da comunicare al giocatore.`, async () => {
+    const pin      = generatePin();
+    const pin_hash = await hashPin(pin);
+    await patch('players', `id=eq.${id}`, { pin_hash });
+    toast(`Nuovo PIN di ${nome}: ${pin} — comunicaglielo!`, 'success');
   });
 }
 
