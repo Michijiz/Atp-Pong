@@ -282,6 +282,21 @@ export async function showProfile(playerId) {
     const canChallenge = state.currentUser && state.currentUser.id !== player.id;
     const closeJs  = `document.getElementById('profileModal').classList.remove('open')`;
 
+    // Form dots ultimi 5 match
+    const formDotsHtml = matches.slice(0, 5).map(m => {
+      const won = m.winner_id === playerId;
+      return `<span style="
+        display:inline-flex;align-items:center;justify-content:center;
+        padding:3px 10px;border-radius:100px;font-size:10px;font-weight:700;letter-spacing:0.3px;
+        background:${won ? 'rgba(255,120,18,0.12)' : 'rgba(229,62,62,0.1)'};
+        color:${won ? 'var(--accent)' : 'var(--accent2)'};
+        border:1px solid ${won ? 'rgba(255,120,18,0.25)' : 'rgba(229,62,62,0.2)'};
+      ">${won ? 'V' : 'S'}</span>`;
+    }).join('');
+
+    // Rank display
+    const rankDisplay = rank === 1 ? '🥇 #1' : rank === 2 ? '🥈 #2' : rank === 3 ? '🥉 #3' : rank > 0 ? `#${rank}` : '—';
+
     document.getElementById('profileContent').innerHTML = `
 
       <!-- TOPBAR sticky -->
@@ -292,53 +307,90 @@ export async function showProfile(playerId) {
         </button>
       </div>
 
-      <!-- HERO -->
-      <div style="display:flex;align-items:center;gap:16px;padding:16px;border-bottom:1px solid var(--b1)">
+      <!-- COVER con pattern geometrico -->
+      <div style="
+        height:110px;position:relative;overflow:hidden;
+        background:var(--s2);
+        border-bottom:1px solid var(--b1);
+      ">
+        <!-- Pattern dots -->
+        <svg style="position:absolute;inset:0;width:100%;height:100%;opacity:0.18" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="pdots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+              <circle cx="2" cy="2" r="1.5" fill="${bg}"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#pdots)"/>
+        </svg>
+        <!-- Rank watermark -->
+        <div style="
+          position:absolute;right:16px;top:50%;transform:translateY(-50%);
+          font-family:var(--font-display);font-size:80px;line-height:1;
+          color:${bg};opacity:0.1;letter-spacing:-2px;pointer-events:none;user-select:none;
+        ">${rank > 0 ? rank : '—'}</div>
+        <!-- Rank badge top-left -->
+        ${rank > 0 ? `<div style="
+          position:absolute;top:14px;left:16px;
+          font-family:var(--font-mono);font-size:11px;font-weight:700;
+          padding:4px 11px;border-radius:100px;letter-spacing:0.5px;
+          background:${bg}22;color:${bg};border:1px solid ${bg}44;
+        ">${rankDisplay}</div>` : ''}
+        ${torneiVinti.length > 0 ? `<div style="position:absolute;top:14px;right:16px;font-size:18px">${torneiVinti.map(() => '🏆').join('')}</div>` : ''}
+      </div>
+
+      <!-- AVATAR sovrapposto alla cover -->
+      <div style="padding:0 18px;margin-top:-44px;position:relative;z-index:1;display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px">
         <div style="position:relative;flex-shrink:0">
-          <div style="width:80px;height:80px;border-radius:50%;border:3px solid ${bg}55;overflow:hidden;background:${bg}18;color:${bg};display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;font-family:var(--font-display);letter-spacing:1px">
+          <div style="
+            width:88px;height:88px;border-radius:50%;
+            border:4px solid var(--s1);
+            background:${bg}22;color:${bg};
+            display:flex;align-items:center;justify-content:center;
+            font-family:var(--font-display);font-size:30px;font-weight:800;letter-spacing:1px;
+            overflow:hidden;
+          ">
             <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:none"
               onload="this.style.display='block';this.nextElementSibling.style.display='none'"
               onerror="this.style.display='none'">
             <span>${initials}</span>
           </div>
-          ${isOwner ? `<label style="position:absolute;bottom:0;right:0;width:22px;height:22px;border-radius:50%;background:var(--accent);border:2px solid var(--s1);display:flex;align-items:center;justify-content:center;cursor:pointer">
-            <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--bg)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          ${isOwner ? `<label style="position:absolute;bottom:2px;right:2px;width:24px;height:24px;border-radius:50%;background:var(--accent);border:2px solid var(--s1);display:flex;align-items:center;justify-content:center;cursor:pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             <input type="file" accept="image/*" style="display:none" onchange="window._handleAvatarUpload('${player.id}', this)">
           </label>` : ''}
         </div>
-        <div style="flex:1;min-width:0">
-          <div style="font-family:var(--font-display);font-size:28px;letter-spacing:2px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${player.nome}</div>
-          <div style="display:flex;align-items:center;gap:6px;margin-top:7px;flex-wrap:wrap">
-            <span style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--accent)">${player.elo} ELO</span>
-            ${rank > 0 ? `<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:100px;background:rgba(255,107,43,0.1);color:var(--accent);border:1px solid rgba(255,107,43,0.25)">${rankLabel}</span>` : ''}
-            ${torneiVinti.map(t => `<span title="Vincitore: ${t.nome}" style="font-size:17px;line-height:1">🏆</span>`).join('')}
-          </div>
-          ${matches.length > 0 ? `<div class="pmod-form-dots" style="margin-top:8px">${
-            matches.slice(0,5).map(m =>
-              `<span class="pmod-dot ${m.winner_id === playerId ? 'win' : 'loss'}"></span>`
-            ).join('')
-          }</div>` : ''}
-          ${player.bio ? `<div style="font-size:12px;color:var(--text2);font-style:italic;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">"${player.bio}"</div>` : ''}
+        <!-- ELO badge a destra -->
+        <div style="padding-bottom:4px;text-align:right">
+          <div style="font-family:var(--font-mono);font-size:26px;font-weight:800;color:var(--accent);line-height:1">${player.elo}</div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);margin-top:2px">ELO Rating</div>
         </div>
       </div>
 
-      <!-- STATS 4 colonne -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--b1);border-bottom:1px solid var(--b1)">
+      <!-- NOME + BIO -->
+      <div style="padding:0 18px 16px;border-bottom:1px solid var(--b1)">
+        <div style="font-family:var(--font-display);font-size:32px;letter-spacing:2px;line-height:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${player.nome}</div>
+        ${player.bio ? `<div style="font-size:13px;color:var(--text2);font-style:italic;margin-top:6px;line-height:1.5">"${player.bio}"</div>` : ''}
+        <!-- Form dots come tag -->
+        ${matches.length > 0 ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:10px">${formDotsHtml}</div>` : ''}
+      </div>
+
+      <!-- STATS STRIP 4 colonne — più grandi -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--b1)">
         ${[
           ['Partite', player.partite_giocate, 'var(--text)'],
           ['Vinte',   player.vinte,           'var(--accent)'],
           ['Perse',   player.perse,           'var(--accent2)'],
           ['Win%',    winPct + '%',           'var(--gold)'],
         ].map(([label, val, color]) => `
-          <div style="background:var(--s1);padding:13px 4px;text-align:center">
-            <div style="font-family:var(--font-mono);font-size:21px;font-weight:700;color:${color};line-height:1">${val}</div>
-            <div style="font-size:10px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--text2);margin-top:5px">${label}</div>
+          <div style="background:var(--s1);padding:18px 6px;text-align:center">
+            <div style="font-family:var(--font-mono);font-size:28px;font-weight:800;color:${color};line-height:1">${val}</div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--text2);margin-top:6px">${label}</div>
           </div>`).join('')}
       </div>
 
       <!-- ELO CHART -->
       ${chartSvg ? `
-      <div style="padding:12px 14px;border-bottom:1px solid var(--b1)">
+      <div style="padding:14px 16px;border-top:1px solid var(--b1);border-bottom:1px solid var(--b1)">
         <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text2);margin-bottom:8px">Andamento ELO</div>
         <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:8px 10px">${chartSvg}</div>
       </div>` : ''}
@@ -360,8 +412,8 @@ export async function showProfile(playerId) {
       </div>` : ''}
 
       <!-- ULTIME PARTITE -->
-      <div style="padding:12px 14px;border-bottom:1px solid var(--b1)">
-        <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text2);margin-bottom:8px">Ultime partite</div>
+      <div style="padding:14px 16px;border-bottom:1px solid var(--b1)">
+        <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text2);margin-bottom:10px">Ultime partite</div>
         ${matches.slice(0, 5).map((m, idx) => {
           const isWin = m.winner_id === playerId;
           const oppId = m.player1_id === playerId ? m.player2_id : m.player1_id;
@@ -369,44 +421,36 @@ export async function showProfile(playerId) {
           const score = m.punteggio1 != null
             ? (m.player1_id === playerId ? `${m.punteggio1}–${m.punteggio2}` : `${m.punteggio2}–${m.punteggio1}`)
             : '';
-          return `<div style="display:flex;align-items:center;gap:9px;padding:7px 0;${idx < 4 ? 'border-bottom:1px solid rgba(30,40,54,0.5)' : ''}">
-            <div style="width:24px;height:24px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;background:${isWin ? 'rgba(200,240,0,0.1)' : 'rgba(255,77,77,0.1)'};color:${isWin ? 'var(--accent)' : 'var(--accent2)'}">${isWin ? 'V' : 'S'}</div>
-            <div style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">vs <strong>${opp?.nome || '?'}</strong></div>
-            ${score ? `<div style="font-family:var(--font-mono);font-size:11px;color:var(--text2);flex-shrink:0">${score}</div>` : ''}
-            <div style="font-size:10px;color:var(--text3);flex-shrink:0">${new Date(m.data).toLocaleDateString('it',{day:'2-digit',month:'2-digit'})}</div>
+          return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;${idx < Math.min(matches.length,5)-1 ? 'border-bottom:1px solid var(--b1)' : ''}">
+            <div style="width:28px;height:28px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;background:${isWin ? 'rgba(255,120,18,0.12)' : 'rgba(229,62,62,0.1)'};color:${isWin ? 'var(--accent)' : 'var(--accent2)'};">${isWin ? 'V' : 'S'}</div>
+            <div style="font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">vs <strong>${opp?.nome || '?'}</strong></div>
+            ${score ? `<div style="font-family:var(--font-mono);font-size:12px;color:var(--text2);flex-shrink:0">${score}</div>` : ''}
+            <div style="font-size:11px;color:var(--text3);flex-shrink:0">${new Date(m.data).toLocaleDateString('it',{day:'2-digit',month:'2-digit'})}</div>
           </div>`;
-        }).join('') || '<div style="font-size:12px;color:var(--text2);padding:4px 0">Nessuna partita ancora</div>'}
+        }).join('') || '<div style="font-size:13px;color:var(--text2);padding:4px 0">Nessuna partita ancora</div>'}
       </div>
 
       <!-- H2H top 5 -->
       ${h2hEntries.length > 0 ? `
-      <div style="padding:12px 14px;border-bottom:1px solid var(--b1)">
-        <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text2);margin-bottom:8px">Testa a testa</div>
+      <div style="padding:14px 16px;border-bottom:1px solid var(--b1)">
+        <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text2);margin-bottom:10px">Testa a testa</div>
         ${h2hEntries.slice(0, 5).map(([oppId, rec], idx) => {
           const opp = state.allPlayers.find(p => p.id === oppId);
           const tot = rec.v + rec.s;
           const pct = Math.round(rec.v / tot * 100);
-          return `<div style="display:flex;align-items:center;gap:9px;padding:6px 0;${idx < Math.min(h2hEntries.length, 5)-1 ? 'border-bottom:1px solid rgba(30,40,54,0.5)' : ''}">
-            <div style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${opp?.nome || '?'}</div>
-            <div style="width:56px;height:4px;border-radius:100px;background:rgba(255,77,77,0.2);overflow:hidden;flex-shrink:0">
+          return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;${idx < Math.min(h2hEntries.length,5)-1 ? 'border-bottom:1px solid var(--b1)' : ''}">
+            <div style="font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${opp?.nome || '?'}</div>
+            <div style="width:64px;height:5px;border-radius:100px;background:rgba(229,62,62,0.15);overflow:hidden;flex-shrink:0">
               <div style="width:${pct}%;height:100%;background:var(--accent);border-radius:100px"></div>
             </div>
-            <div style="font-family:var(--font-mono);font-size:11px;flex-shrink:0;min-width:36px;text-align:right">
+            <div style="font-family:var(--font-mono);font-size:12px;flex-shrink:0;min-width:40px;text-align:right">
               <span style="color:var(--accent)">${rec.v}</span><span style="color:var(--text3)">/${tot}</span>
             </div>
           </div>`;
         }).join('')}
       </div>` : ''}
 
-      <!-- SFIDA CTA -->
-      ${canChallenge ? `
-      <div style="padding:14px 14px 20px">
-        <button
-          style="width:100%;padding:12px;border-radius:11px;background:var(--accent);color:var(--bg);border:none;font-size:13px;font-weight:800;letter-spacing:0.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"
-          onclick="window._sendChallenge('${player.id}');${closeJs}">
-          ⚔️ Sfida ${player.nome}
-        </button>
-      </div>` : '<div style="height:16px"></div>'}
+      <div style="height:20px"></div>
     `;
 
   } catch(err) {
