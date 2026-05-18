@@ -1,17 +1,14 @@
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 import { get, post } from './api.js';
 import { state } from './state.js';
-import { avatarEl, getAvatarUrl } from './avatar.js';
+import { timeAgo } from './ui.js';
 
 // =============================================
-// LIVE FEED — Breaking News
+// LIVE FEED
 // =============================================
-
-let realtimeChannel = null;
 
 // =============================================
 // AGGIUNGE EVENTO AL FEED
-// Chiamata da altri moduli (matches, challenges, tornei)
 // =============================================
 export async function addFeedEvent({ tipo, player1_id, player2_id, metadata = {} }) {
   try {
@@ -39,9 +36,8 @@ export async function loadFeed() {
 
   renderFeed(events, container);
   if (events.length > 0) _lastEventId = events[0].id;
-  // Rimuovi badge "nuovi eventi" se presente
   document.querySelector('[data-section=feed] ._feedbadge')?.remove();
-  subscribeRealtime(container);
+  startPolling(container);
 }
 
 // =============================================
@@ -55,8 +51,7 @@ function renderFeed(events, container) {
     </div>`;
     return;
   }
-
-  container.innerHTML = events.map(e => renderFeedEvent(e)).join('');
+  container.innerHTML = events.map(renderFeedEvent).join('');
 }
 
 function renderFeedEvent(e) {
@@ -69,63 +64,37 @@ function renderFeedEvent(e) {
 
   switch(e.tipo) {
     case 'match_confirmed':
-      icon   = '🏓';
-      accent = 'var(--accent)';
-      text   = `<strong style="color:var(--accent)">${p1?.nome || '?'}</strong>
-                ha battuto
-                <strong>${p2?.nome || '?'}</strong>
-                ${meta.score ? `<span class="match-score">${meta.score}</span>` : ''}
-                ${meta.elo_delta ? `<span style="color:var(--accent);font-family:var(--font-mono);font-size:12px">+${meta.elo_delta} Elo</span>` : ''}`;
+      icon = '🏓'; accent = 'var(--accent)';
+      text = `<strong style="color:var(--accent)">${p1?.nome||'?'}</strong> ha battuto <strong>${p2?.nome||'?'}</strong>
+              ${meta.score ? `<span class="match-score">${meta.score}</span>` : ''}
+              ${meta.elo_delta ? `<span style="color:var(--accent);font-family:var(--font-mono);font-size:12px">+${meta.elo_delta} Elo</span>` : ''}`;
       break;
-
     case 'challenge_sent':
-      icon   = '⚔️';
-      accent = 'var(--accent3)';
-      text   = `<strong style="color:var(--accent3)">${p1?.nome || '?'}</strong>
-                ha sfidato
-                <strong>${p2?.nome || '?'}</strong>
-                ${meta.messaggio ? `<span style="color:var(--text2);font-style:italic">"${meta.messaggio}"</span>` : ''}`;
+      icon = '⚔️'; accent = 'var(--accent3)';
+      text = `<strong style="color:var(--accent3)">${p1?.nome||'?'}</strong> ha sfidato <strong>${p2?.nome||'?'}</strong>
+              ${meta.messaggio ? `<span style="color:var(--text2);font-style:italic">"${meta.messaggio}"</span>` : ''}`;
       break;
-
     case 'challenge_accepted':
-      icon   = '✅';
-      accent = 'var(--accent)';
-      text   = `<strong style="color:var(--accent)">${p1?.nome || '?'}</strong>
-                ha accettato la sfida di
-                <strong>${p2?.nome || '?'}</strong>`;
+      icon = '✅'; accent = 'var(--accent)';
+      text = `<strong style="color:var(--accent)">${p1?.nome||'?'}</strong> ha accettato la sfida di <strong>${p2?.nome||'?'}</strong>`;
       break;
-
     case 'challenge_refused':
-      icon   = '😤';
-      accent = 'var(--accent2)';
-      text   = `<strong style="color:var(--accent2)">${p1?.nome || '?'}</strong>
-                ha rifiutato la sfida di
-                <strong>${p2?.nome || '?'}</strong>`;
+      icon = '😤'; accent = 'var(--accent2)';
+      text = `<strong style="color:var(--accent2)">${p1?.nome||'?'}</strong> ha rifiutato la sfida di <strong>${p2?.nome||'?'}</strong>`;
       break;
-
     case 'tournament_created':
-      icon   = '🏅';
-      accent = 'var(--gold)';
-      text   = `Nuovo torneo creato: <strong style="color:var(--gold)">${meta.nome || '?'}</strong>
-                <span class="badge badge-torneo">${meta.tipo || ''}</span>`;
+      icon = '🏅'; accent = 'var(--gold)';
+      text = `Nuovo torneo creato: <strong style="color:var(--gold)">${meta.nome||'?'}</strong>
+              <span class="badge badge-torneo">${meta.tipo||''}</span>`;
       break;
-
     case 'tournament_winner':
-      icon   = '🏆';
-      accent = 'var(--gold)';
-      text   = `<strong style="color:var(--gold)">${p1?.nome || '?'}</strong>
-                ha vinto il torneo
-                <strong>${meta.torneo || '?'}</strong>! 🎉`;
+      icon = '🏆'; accent = 'var(--gold)';
+      text = `<strong style="color:var(--gold)">${p1?.nome||'?'}</strong> ha vinto il torneo <strong>${meta.torneo||'?'}</strong>! 🎉`;
       break;
-
     case 'elo_milestone':
-      icon   = '📈';
-      accent = 'var(--accent)';
-      text   = `<strong style="color:var(--accent)">${p1?.nome || '?'}</strong>
-                ha raggiunto
-                <strong style="font-family:var(--font-mono)">${meta.elo}</strong> Elo!`;
+      icon = '📈'; accent = 'var(--accent)';
+      text = `<strong style="color:var(--accent)">${p1?.nome||'?'}</strong> ha raggiunto <strong style="font-family:var(--font-mono)">${meta.elo}</strong> Elo!`;
       break;
-
     default:
       text = `Evento: ${e.tipo}`;
   }
@@ -140,33 +109,17 @@ function renderFeedEvent(e) {
 }
 
 // =============================================
-// REALTIME — aggiorna feed live
+// POLLING — aggiorna feed ogni 15s
 // =============================================
-function subscribeRealtime(container) {
-  // Disconnetti eventuale canale precedente
-  if (realtimeChannel) {
-    realtimeChannel.unsubscribe();
-  }
-
-  realtimeChannel = new EventSource(
-    `${SUPABASE_URL}/realtime/v1/sse?apikey=${SUPABASE_KEY}&schema=public&table=feed_events&filter=id=neq.00000000-0000-0000-0000-000000000000`
-  );
-
-  // Usiamo Supabase Realtime via fetch + polling leggero come fallback
-  // perché EventSource non supporta headers custom su tutti i browser
-  startPolling(container);
-}
-
-// Polling ogni 15s come fallback robusto per il free tier
-let _pollInterval   = null;
-let _lastEventId    = null; // Fix #9 — traccia l'ultimo evento visto
+let _pollInterval = null;
+let _lastEventId  = null;
 
 function startPolling(container) {
   if (_pollInterval) clearInterval(_pollInterval);
 
   _pollInterval = setInterval(async () => {
     if (!document.getElementById('sec-feed')?.classList.contains('active')) {
-      // Feed non visibile: controlla solo se ci sono nuovi eventi per il badge
+      // Feed non visibile: controlla solo badge
       if (_lastEventId) {
         const newest = await get('feed_events', `id=gt.${_lastEventId}&select=id&order=creato_il.desc&limit=10`).catch(() => []);
         if (newest.length > 0) {
@@ -183,7 +136,6 @@ function startPolling(container) {
       return;
     }
 
-    // Feed visibile: ricarica e aggiorna
     const events = await get('feed_events', 'order=creato_il.desc&limit=50&select=*');
     if (events.length > 0) _lastEventId = events[0].id;
     renderFeed(events, container);
@@ -191,21 +143,16 @@ function startPolling(container) {
 }
 
 export function stopFeedPolling() {
-  if (_pollInterval) {
-    clearInterval(_pollInterval);
-    _pollInterval = null;
-  }
+  if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
 }
 
 // =============================================
-// HOME FEED — Breaking News in homepage
+// HOME FEED — ticker breaking news
 // =============================================
 let _homePollInterval = null;
 
 export async function loadHomeFeed() {
   await _renderHomeFeed();
-
-  // Aggiorna ogni 30s anche se la sezione non è attiva
   if (_homePollInterval) clearInterval(_homePollInterval);
   _homePollInterval = setInterval(_renderHomeFeed, 30000);
 }
@@ -228,41 +175,18 @@ async function _renderHomeFeed() {
     return;
   }
 
-  // --- Ticker ---
   const tickerItems = events.slice(0, 8).map(e => {
     const p1   = state.allPlayers.find(p => p.id === e.player1_id);
     const p2   = state.allPlayers.find(p => p.id === e.player2_id);
     const meta = e.metadata || {};
     switch(e.tipo) {
-      case 'match_confirmed':
-        return `<span class="ticker-item">🏓 <strong>${p1?.nome||'?'}</strong> batte ${p2?.nome||'?'} ${meta.score ? meta.score : ''}</span>`;
-      case 'challenge_sent':
-        return `<span class="ticker-item">⚔️ <strong>${p1?.nome||'?'}</strong> sfida ${p2?.nome||'?'}</span>`;
-      case 'tournament_winner':
-        return `<span class="ticker-item">🏆 <strong>${p1?.nome||'?'}</strong> vince il torneo!</span>`;
-      case 'elo_milestone':
-        return `<span class="ticker-item">📈 <strong>${p1?.nome||'?'}</strong> raggiunge ${meta.elo} Elo</span>`;
+      case 'match_confirmed':   return `<span class="ticker-item">🏓 <strong>${p1?.nome||'?'}</strong> batte ${p2?.nome||'?'} ${meta.score||''}</span>`;
+      case 'challenge_sent':    return `<span class="ticker-item">⚔️ <strong>${p1?.nome||'?'}</strong> sfida ${p2?.nome||'?'}</span>`;
+      case 'tournament_winner': return `<span class="ticker-item">🏆 <strong>${p1?.nome||'?'}</strong> vince il torneo!</span>`;
+      case 'elo_milestone':     return `<span class="ticker-item">📈 <strong>${p1?.nome||'?'}</strong> raggiunge ${meta.elo} Elo</span>`;
       default: return null;
     }
   }).filter(Boolean);
 
   ticker.innerHTML = tickerItems.join('<span class="ticker-sep">·</span>') || 'Live — risultati e sfide in tempo reale';
-}
-
-
-
-// =============================================
-// UTILITY
-// =============================================
-function timeAgo(dateStr) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  const hrs  = Math.floor(mins / 60);
-  const days = Math.floor(hrs  / 24);
-
-  if (mins < 1)   return 'adesso';
-  if (mins < 60)  return `${mins}m fa`;
-  if (hrs  < 24)  return `${hrs}h fa`;
-  if (days < 7)   return `${days}g fa`;
-  return new Date(dateStr).toLocaleDateString('it');
 }

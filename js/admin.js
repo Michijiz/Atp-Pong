@@ -1,9 +1,11 @@
 import { get, post, patch, del } from './api.js';
 import { state } from './state.js';
-import { toast, confirmDialog } from './ui.js';
+import { toast, confirmDialog, scoreInputModal } from './ui.js';
 import { avatarEl } from './avatar.js';
 import { confirmMatch } from './matches.js';
 import { loadRanking } from './ranking.js';
+import { hashPin, generatePin } from './auth.js';
+import { getKFactor } from './elo.js';
 
 // =============================================
 // ADMIN — pannello completo
@@ -15,7 +17,6 @@ export async function loadAdmin() {
   const players = await get('players', 'order=nome.asc&select=*');
   state.allPlayers = players;
 
-  // --- Giocatori ---
   document.getElementById('adminPlayerList').innerHTML = players.map(p => `
     <div class="match-item">
       <div class="match-players">
@@ -31,7 +32,6 @@ export async function loadAdmin() {
     </div>
   `).join('') || '<div class="empty"><p>Nessun giocatore</p></div>';
 
-  // --- Partite pending ---
   const pending = await get('matches', 'confermata=eq.false&order=data.desc&select=*');
   document.getElementById('adminPendingMatches').innerHTML = pending.length === 0
     ? '<div class="empty"><p>Nessuna partita in sospeso</p></div>'
@@ -52,10 +52,7 @@ export async function loadAdmin() {
         </div>`;
       }).join('');
 
-  // --- Tornei ---
   await _renderAdminTornei(players);
-
-  // --- Selects iscrizione torneo ---
   await _populateIscriviSelects(players);
 }
 
@@ -68,12 +65,12 @@ export async function adminLoadMatches(filter) {
     state.allPlayers = await get('players', 'order=nome.asc&select=*');
   }
 
-  let query = 'order=data.desc&limit=100&select=*';
-  if (filter === 'pending') query = 'confermata=eq.false&order=data.desc&select=*';
-  if (filter === 'libera')  query = 'tipo=eq.libera&order=data.desc&limit=100&select=*';
-  if (filter === 'torneo')  query = 'tipo=eq.torneo&order=data.desc&limit=100&select=*';
-
-  const matches = await get('matches', query);
+  const queries = {
+    pending: 'confermata=eq.false&order=data.desc&select=*',
+    libera:  'tipo=eq.libera&order=data.desc&limit=100&select=*',
+    torneo:  'tipo=eq.torneo&order=data.desc&limit=100&select=*',
+  };
+  const matches = await get('matches', queries[filter] || 'order=data.desc&limit=100&select=*');
   const el = document.getElementById('adminMatchList');
 
   if (matches.length === 0) {
@@ -110,51 +107,17 @@ export async function adminDeleteMatch(matchId) {
 }
 
 export function adminEditMatch(matchId, p1Id, p2Id, p1Name, p2Name, s1cur, s2cur) {
-  document.getElementById('_scoreDialog')?.remove();
-  const overlay = document.createElement('div');
-  overlay.id = '_scoreDialog';
-  overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:3000;display:flex;align-items:center;justify-content:center;padding:24px;`;
-  overlay.innerHTML = `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:340px;width:100%">
-      <div style="font-family:var(--font-display);font-size:20px;letter-spacing:2px;margin-bottom:4px">MODIFICA</div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:20px;text-transform:uppercase;letter-spacing:0.5px">${p1Name} vs ${p2Name}</div>
-      <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px">
-        <div style="flex:1">
-          <div style="font-size:11px;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">${p1Name}</div>
-          <input id="_sd_s1" type="number" min="0" max="99" value="${s1cur}"
-            style="width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:var(--radius);padding:12px;font-size:24px;font-family:var(--font-mono);text-align:center;outline:none">
-        </div>
-        <div style="font-size:20px;color:var(--text2);padding-top:20px">—</div>
-        <div style="flex:1">
-          <div style="font-size:11px;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">${p2Name}</div>
-          <input id="_sd_s2" type="number" min="0" max="99" value="${s2cur}"
-            style="width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:var(--radius);padding:12px;font-size:24px;font-family:var(--font-mono);text-align:center;outline:none">
-        </div>
-      </div>
-      <div style="display:flex;gap:10px">
-        <button id="_sd_cancel" class="btn btn-secondary" style="flex:1">Annulla</button>
-        <button id="_sd_ok"     class="btn btn-primary"   style="flex:2">Salva</button>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-  setTimeout(() => document.getElementById('_sd_s1')?.focus(), 50);
-  const cleanup = () => overlay.remove();
-  document.getElementById('_sd_cancel').addEventListener('click', cleanup);
-  overlay.addEventListener('click', e => { if (e.target === overlay) cleanup(); });
-  document.getElementById('_sd_ok').addEventListener('click', async () => {
-    const s1 = parseInt(document.getElementById('_sd_s1').value);
-    const s2 = parseInt(document.getElementById('_sd_s2').value);
-    if (isNaN(s1) || isNaN(s2)) return toast('Inserisci entrambi i punteggi', 'error');
-    const winnerId = s1 > s2 ? p1Id : p2Id;
-    await patch('matches', `id=eq.${matchId}`, { punteggio1: s1, punteggio2: s2, winner_id: winnerId });
-    await recalcAllElo();
-    cleanup();
-    toast('Partita aggiornata e statistiche ricalcolate');
-    await adminLoadMatches('all');
-  });
-  overlay.addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('_sd_ok').click();
-    if (e.key === 'Escape') cleanup();
+  scoreInputModal({
+    title: 'MODIFICA',
+    p1Name, p2Name,
+    s1: s1cur, s2: s2cur,
+    onSave: async (s1, s2) => {
+      const winnerId = s1 > s2 ? p1Id : p2Id;
+      await patch('matches', `id=eq.${matchId}`, { punteggio1: s1, punteggio2: s2, winner_id: winnerId });
+      await recalcAllElo();
+      toast('Partita aggiornata e statistiche ricalcolate');
+      await adminLoadMatches('all');
+    }
   });
 }
 
@@ -200,12 +163,12 @@ export async function adminDeleteTorneo(torneoId, nome) {
 async function _populateIscriviSelects(players) {
   const tornei = await get('tournaments', 'stato=eq.in_corso&order=data_inizio.desc&select=*');
 
-  const tSel = document.getElementById('admin_iscriviTorneo');
-  tSel.innerHTML = '<option value="">Seleziona torneo...</option>' +
+  document.getElementById('admin_iscriviTorneo').innerHTML =
+    '<option value="">Seleziona torneo...</option>' +
     (tornei||[]).map(t => `<option value="${t.id}">${t.nome}</option>`).join('');
 
-  const pSel = document.getElementById('admin_iscriviPlayer');
-  pSel.innerHTML = '<option value="">Seleziona giocatore...</option>' +
+  document.getElementById('admin_iscriviPlayer').innerHTML =
+    '<option value="">Seleziona giocatore...</option>' +
     players.map(p => `<option value="${p.id}">${p.nome}</option>`).join('');
 }
 
@@ -234,10 +197,8 @@ export async function adminAddPlayer() {
   const existing = await get('players', `nome=ilike.${encodeURIComponent(nome)}`);
   if (existing && existing.length > 0) return toast('Nome già esistente', 'error');
 
-  const pin      = String(Math.floor(100000 + Math.random() * 900000));
-  const data     = new TextEncoder().encode(pin + 'pongatp_salt');
-  const hash     = await crypto.subtle.digest('SHA-256', data);
-  const pin_hash = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('');
+  const pin      = generatePin();
+  const pin_hash = await hashPin(pin);
 
   await post('players', { nome, pin_hash, ruolo: 'player', elo: 1000 });
   document.getElementById('admin_newName').value = '';
@@ -281,60 +242,36 @@ export async function downloadPinBackup() {
 
 // =============================================
 // RICALCOLO COMPLETO ELO
-// Resetta tutti i giocatori a 1000 e riapplica
-// cronologicamente tutte le partite confermate.
 // =============================================
 export async function recalcAllElo() {
-  // 1. Carica tutti i giocatori e tutte le partite confermate in ordine cronologico
   const [players, matches] = await Promise.all([
     get('players', 'select=*'),
     get('matches', 'confermata=eq.true&order=data.asc&select=*')
   ]);
 
-  // 2. Stato locale — partiamo da Elo 1000 per tutti
-  const elo     = {};
-  const partite = {};
-  const vinte   = {};
-  const perse   = {};
+  const elo = {}, partite = {}, vinte = {}, perse = {};
   players.forEach(p => {
-    elo[p.id]     = 1000;
-    partite[p.id] = 0;
-    vinte[p.id]   = 0;
-    perse[p.id]   = 0;
+    elo[p.id] = 1000; partite[p.id] = 0; vinte[p.id] = 0; perse[p.id] = 0;
   });
 
-  // 3. Riapplica ogni partita in ordine
   for (const m of matches) {
-    const p1id = m.player1_id;
-    const p2id = m.player2_id;
-    if (!p1id || !p2id || !m.winner_id) continue;
+    const { player1_id: p1id, player2_id: p2id, winner_id } = m;
+    if (!p1id || !p2id || !winner_id) continue;
     if (elo[p1id] === undefined || elo[p2id] === undefined) continue;
 
-    const winnerIsP1 = m.winner_id === p1id;
-    const eloA = elo[p1id], eloB = elo[p2id];
-    const nA   = partite[p1id], nB = partite[p2id];
+    const winnerIsP1 = winner_id === p1id;
+    const EA  = 1 / (1 + Math.pow(10, (elo[p2id] - elo[p1id]) / 400));
+    const KA  = getKFactor(partite[p1id]);
+    const KB  = getKFactor(partite[p2id]);
+    const molt = (m.tipo === 'torneo' && m._molt) ? m._molt : 1;
 
-    // K factor basato su partite giocate fino a quel momento
-    const KA = nA < 10 ? 40 : nA > 30 ? 24 : 32;
-    const KB = nB < 10 ? 40 : nB > 30 ? 24 : 32;
-    const EA = 1 / (1 + Math.pow(10, (eloB - eloA) / 400));
-
-    // Moltiplicatore torneo
-    let molt = 1;
-    if (m.tipo === 'torneo' && m.torneo_id) {
-      // Usiamo il moltiplicatore già calcolato se disponibile, altrimenti 1
-      molt = m._molt || 1;
-    }
-
-    elo[p1id]     = Math.round(eloA + KA * molt * ((winnerIsP1 ? 1 : 0) - EA));
-    elo[p2id]     = Math.round(eloB + KB * molt * ((winnerIsP1 ? 0 : 1) - (1 - EA)));
-    partite[p1id]++;
-    partite[p2id]++;
+    elo[p1id] = Math.round(elo[p1id] + KA * molt * ((winnerIsP1 ? 1 : 0) - EA));
+    elo[p2id] = Math.round(elo[p2id] + KB * molt * ((winnerIsP1 ? 0 : 1) - (1 - EA)));
+    partite[p1id]++; partite[p2id]++;
     if (winnerIsP1) { vinte[p1id]++; perse[p2id]++; }
     else            { vinte[p2id]++; perse[p1id]++; }
   }
 
-  // 4. Scrivi tutti i nuovi valori in parallelo
   await Promise.all(players.map(p =>
     patch('players', `id=eq.${p.id}`, {
       elo:             elo[p.id]     ?? 1000,

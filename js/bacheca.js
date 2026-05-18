@@ -1,15 +1,11 @@
 import { get, post, del } from './api.js';
 import { state } from './state.js';
-import { toast } from './ui.js';
+import { toast, timeAgo } from './ui.js';
 import { avatarEl, getAvatarUrl } from './avatar.js';
 
-function timeAgo(dateStr) {
-  const diff = (Date.now() - new Date(dateStr)) / 1000;
-  if (diff < 60)    return 'ora';
-  if (diff < 3600)  return `${Math.floor(diff/60)}m fa`;
-  if (diff < 86400) return `${Math.floor(diff/3600)}h fa`;
-  return `${Math.floor(diff/86400)}g fa`;
-}
+// =============================================
+// BACHECA
+// =============================================
 
 export async function loadBacheca() {
   const el = document.getElementById('bachecarContent');

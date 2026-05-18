@@ -7,13 +7,13 @@ import { toast, openModal, closeModal } from './ui.js';
 // =============================================
 
 // Salt globale mantenuto per retrocompatibilità — cambiarlo invaliderebbe tutti i PIN esistenti
-async function hashPin(pin) {
+export async function hashPin(pin) {
   const data = new TextEncoder().encode(pin + 'pongatp_salt');
   const hash = await crypto.subtle.digest('SHA-256', data);
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-function generatePin() {
+export function generatePin() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
@@ -21,18 +21,17 @@ export function updateAuthUI() {
   const isLogged = !!state.currentUser;
   const isAdmin  = state.currentUser?.ruolo === 'admin';
 
-  document.getElementById('loginBtn').style.display   = isLogged ? 'none'  : 'block';
-  document.getElementById('logoutBtn').style.display  = isLogged ? 'block' : 'none';
-  document.getElementById('userBadge').style.display  = isLogged ? 'flex'  : 'none';
+  document.getElementById('loginBtn').style.display    = isLogged ? 'none'  : 'block';
+  document.getElementById('logoutBtn').style.display   = isLogged ? 'block' : 'none';
+  document.getElementById('userBadge').style.display   = isLogged ? 'flex'  : 'none';
   document.getElementById('adminNavBtn').style.display = isAdmin  ? 'block' : 'none';
 
   if (isLogged) {
     document.getElementById('userName').textContent = state.currentUser.nome;
     const dotEl = document.querySelector('#userBadge .dot');
-    if (dotEl) dotEl.textContent = state.currentUser.nome.slice(0,2).toUpperCase();
+    if (dotEl) dotEl.textContent = state.currentUser.nome.slice(0, 2).toUpperCase();
   }
 
-  // Persisti sessione
   if (state.currentUser) {
     localStorage.setItem('pongatp_user', JSON.stringify({ id: state.currentUser.id }));
   } else {
@@ -105,8 +104,8 @@ export async function doRegister() {
   const existing = await get('players', `nome=ilike.${encodeURIComponent(nome)}`);
   if (existing && existing.length > 0) return toast('Nome già esistente', 'error');
 
-  const pin       = generatePin();
-  const pin_hash  = await hashPin(pin);
+  const pin      = generatePin();
+  const pin_hash = await hashPin(pin);
   const newPlayer = await post('players', { nome, pin_hash, ruolo: 'player', elo: 1000 });
 
   document.getElementById('generatedPin').textContent       = pin;

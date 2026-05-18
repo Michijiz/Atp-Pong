@@ -1,6 +1,6 @@
-import { get, post, patch } from './api.js';
+import { get, patch } from './api.js';
 import { state } from './state.js';
-import { toast, openModal, closeModal } from './ui.js';
+import { toast, openModal, getRankLabel } from './ui.js';
 import { getAvatarUrl, getAvatarColor, handleAvatarUpload } from './avatar.js';
 import { getPushStatus, subscribeToPush, unsubscribeFromPush } from './push.js';
 import { acceptChallenge, refuseChallenge } from './challenges.js';
@@ -32,20 +32,24 @@ async function renderMyProfile() {
   const winPct = player.partite_giocate > 0
     ? Math.round(player.vinte / player.partite_giocate * 100) : 0;
 
-  // Rank
   const ranked = state.allPlayers
     .filter(p => p.partite_giocate > 0)
     .sort((a,b) => b.elo - a.elo);
-  const rank = ranked.findIndex(p => p.id === u.id) + 1;
-  const rankLabel = rank === 1 ? '👑 #1' : rank === 2 ? '🥈 #2' : rank === 3 ? '🥉 #3' : rank > 0 ? `#${rank}` : '—';
-  const isLeader = rank === 1;
+  const rank       = ranked.findIndex(p => p.id === u.id) + 1;
+  const rankLabel  = getRankLabel(rank);
+  const isLeader   = rank === 1;
 
-  const [bg] = getAvatarColor(player.nome);
-  const initials = player.nome.slice(0,2).toUpperCase();
+  const [bg]      = getAvatarColor(player.nome);
+  const initials  = player.nome.slice(0,2).toUpperCase();
   const avatarUrl = getAvatarUrl(player.id);
+  const pushOn    = pushStatus === 'subscribed';
 
-  // Sfide in arrivo
-  const challengesHtml = incoming.length ? incoming.map(c => {
+  const sectionHeader = label => `
+    <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:8px">
+      ${label} <span style="flex:1;height:1px;background:var(--b1);display:block"></span>
+    </div>`;
+
+  const challengesHtml = incoming.map(c => {
     const sfidante = state.allPlayers.find(p => p.id === c.sfidante_id);
     return `<div class="pmod-ch-card">
       <div class="pmod-ch-icon">
@@ -62,9 +66,8 @@ async function renderMyProfile() {
           onclick="window._refuseChallenge('${c.id}');document.getElementById('myProfileModal').classList.remove('open')">✗</button>
       </div>
     </div>`;
-  }).join('') : '';
+  }).join('');
 
-  // Ultime partite
   const recentHtml = matches.slice(0, 5).map(m => {
     const isWin = m.winner_id === u.id;
     const oppId = m.player1_id === u.id ? m.player2_id : m.player1_id;
@@ -80,16 +83,10 @@ async function renderMyProfile() {
     </div>`;
   }).join('') || '<div style="font-size:12px;color:var(--text2);padding:8px 0">Nessuna partita ancora</div>';
 
-  const pushOn = pushStatus === 'subscribed';
-
-  // Cover color: gold per leader
-  const coverStyle = isLeader
+  const coverStyle  = isLeader
     ? 'background:linear-gradient(135deg,#1a1200 0%,#120f00 60%,#0d0f1a 100%)'
     : 'background:linear-gradient(135deg,#0d1a08 0%,#0f1a1f 60%,#0d0f1a 100%)';
-  const rankBgColor = isLeader ? 'rgba(245,166,35,0.08)' : 'rgba(200,240,0,0.06)';
-  const posStyle = isLeader
-    ? 'background:rgba(245,166,35,0.1);color:var(--gold);border-color:rgba(245,166,35,0.25)'
-    : '';
+  const posStyle    = isLeader ? 'background:rgba(245,166,35,0.1);color:var(--gold);border-color:rgba(245,166,35,0.25)' : '';
 
   document.getElementById('myProfileContent').innerHTML = `
     <div class="pmod-bar">
@@ -98,11 +95,9 @@ async function renderMyProfile() {
         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-
     <div class="pmod-cover" style="${coverStyle}">
-      <div class="pmod-rank-bg" style="color:${rankBgColor}">${rank > 0 ? '#'+rank : ''}</div>
+      <div class="pmod-rank-bg" style="color:rgba(200,240,0,0.06)">${rank > 0 ? '#'+rank : ''}</div>
     </div>
-
     <div class="pmod-hero">
       <div class="pmod-av-wrap">
         <div class="pmod-av" style="background:${bg}18;color:${bg};${isLeader ? 'border-color:rgba(245,166,35,0.4)' : ''}">
@@ -124,47 +119,17 @@ async function renderMyProfile() {
         </div>
       </div>
     </div>
-
     ${player.bio ? `<div class="pmod-bio">"${player.bio}"</div>` : ''}
-
     <div class="pmod-stats">
-      <div class="pmod-stat">
-        <span class="pmod-sv">${player.partite_giocate}</span>
-        <span class="pmod-sl">Partite</span>
-      </div>
-      <div class="pmod-stat">
-        <span class="pmod-sv" style="color:var(--accent)">${player.vinte}</span>
-        <span class="pmod-sl">Vinte</span>
-      </div>
-      <div class="pmod-stat">
-        <span class="pmod-sv" style="color:var(--accent2)">${player.perse}</span>
-        <span class="pmod-sl">Perse</span>
-      </div>
-      <div class="pmod-stat">
-        <span class="pmod-sv" style="color:var(--gold)">${winPct}%</span>
-        <span class="pmod-sl">Win%</span>
-      </div>
+      <div class="pmod-stat"><span class="pmod-sv">${player.partite_giocate}</span><span class="pmod-sl">Partite</span></div>
+      <div class="pmod-stat"><span class="pmod-sv" style="color:var(--accent)">${player.vinte}</span><span class="pmod-sl">Vinte</span></div>
+      <div class="pmod-stat"><span class="pmod-sv" style="color:var(--accent2)">${player.perse}</span><span class="pmod-sl">Perse</span></div>
+      <div class="pmod-stat"><span class="pmod-sv" style="color:var(--gold)">${winPct}%</span><span class="pmod-sl">Win%</span></div>
     </div>
-
-    ${incoming.length ? `
+    ${incoming.length ? `<div class="pmod-section">${sectionHeader(`Sfide in arrivo (${incoming.length})`)}${challengesHtml}</div>` : ''}
+    <div class="pmod-section">${sectionHeader('Ultime partite')}${recentHtml}</div>
     <div class="pmod-section">
-      <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:8px">
-        Sfide in arrivo (${incoming.length}) <span style="flex:1;height:1px;background:var(--b1);display:block"></span>
-      </div>
-      ${challengesHtml}
-    </div>` : ''}
-
-    <div class="pmod-section">
-      <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:8px">
-        Ultime partite <span style="flex:1;height:1px;background:var(--b1);display:block"></span>
-      </div>
-      ${recentHtml}
-    </div>
-
-    <div class="pmod-section">
-      <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:8px">
-        Notifiche push <span style="flex:1;height:1px;background:var(--b1);display:block"></span>
-      </div>
+      ${sectionHeader('Notifiche push')}
       <div class="pmod-push" onclick="window._togglePushFromProfile()">
         <div>
           <div class="pmod-push-lbl">${pushOn ? 'Notifiche attive' : 'Notifiche disattive'}</div>
@@ -173,18 +138,14 @@ async function renderMyProfile() {
         <button class="toggle-switch ${pushOn ? 'on' : ''}" id="profilePushSwitch"></button>
       </div>
     </div>
-
     <div class="pmod-section">
-      <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:8px">
-        La mia bio <span style="flex:1;height:1px;background:var(--b1);display:block"></span>
-      </div>
+      ${sectionHeader('La mia bio')}
       <textarea class="pmod-bio-ta" id="myBioInput" rows="3"
         placeholder="Il tuo stile di gioco, il tuo colpo preferito..."
         maxlength="200">${player.bio || ''}</textarea>
       <button class="btn btn-secondary" style="margin-top:6px;padding:7px 14px;width:auto;font-size:12px"
         onclick="window._saveBio()">Salva bio</button>
     </div>
-
     <div class="pmod-section pmod-pb">
       <button class="pmod-logout-btn" id="myProfileLogoutBtn">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -219,7 +180,7 @@ export async function togglePushFromProfile() {
 export async function updatePushIcon() {
   const icon = document.getElementById('pushIcon');
   if (!icon || !state.currentUser) return;
-  const status = await getPushStatus();
+  const status  = await getPushStatus();
   const bellOn  = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`;
   const bellOff = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
   icon.innerHTML = status === 'subscribed' ? bellOn : bellOff;
@@ -240,8 +201,8 @@ export async function togglePush() {
 export async function updateChallengeBadge() {
   if (!state.currentUser) return;
   try {
-    const pending = await get('challenges', `sfidato_id=eq.${state.currentUser.id}&stato=eq.pending`);
-    const badge   = document.getElementById('challengeBadge');
+    const pending  = await get('challenges', `sfidato_id=eq.${state.currentUser.id}&stato=eq.pending`);
+    const badge    = document.getElementById('challengeBadge');
     const navSfide = document.getElementById('navSfide');
     if (!badge) return;
     const count = pending.length;
@@ -249,7 +210,6 @@ export async function updateChallengeBadge() {
       badge.textContent = count;
       badge.style.display = 'inline';
       if (navSfide) {
-        // add/update nav badge
         let nb = navSfide.querySelector('.nav-badge');
         if (!nb) { nb = document.createElement('span'); nb.className = 'nav-badge'; navSfide.appendChild(nb); }
         nb.textContent = count;
