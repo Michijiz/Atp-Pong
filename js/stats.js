@@ -12,7 +12,7 @@ export async function loadStats() {
   el.innerHTML = '<div class="loading"><div class="spinner"></div> Caricamento...</div>';
 
   const [tornei, tPoints, players] = await Promise.all([
-    get('tournaments', 'stato=eq.chiuso&order=creato_il.desc&select=*'),
+    get('tournaments', 'stato=eq.chiuso&order=data_inizio.desc&select=*'),
     get('tournament_points', 'select=*'),
     get('players', 'select=id,nome')
   ]);
@@ -48,7 +48,7 @@ export async function loadStats() {
             <div>
               <div style="font-family:var(--font-display);font-size:20px;letter-spacing:1px">${t.nome}</div>
               <div style="font-size:11px;color:var(--text2);margin-top:4px">
-                ${new Date(t.creato_il).toLocaleDateString('it',{day:'numeric',month:'long',year:'numeric'})}
+                ${new Date(t.data_inizio).toLocaleDateString('it',{day:'numeric',month:'long',year:'numeric'})}
               </div>
             </div>
             <span class="badge badge-torneo">${t.tipo}</span>
