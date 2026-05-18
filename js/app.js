@@ -7,7 +7,7 @@ import { initModalDismiss, showSection, toast } from './ui.js';
 import { restoreSession, openLoginModal, showLoginForm, showRegisterForm,
          doLogin, doRegister, afterRegister, logout } from './auth.js';
 import { loadRanking, showProfile }      from './ranking.js';
-import { loadPartite, submitMatch, confirmMatch, loadMatchHistory, addScoreToMatch } from './matches.js';
+import { loadPartite, updateMatchPlayers, submitMatch, submitMatchClassic, openScorekeeperForMatch, confirmMatch, loadMatchHistory, addScoreToMatch } from './matches.js';
 import { loadTornei, backToTornei, creaTorneo, openTorneo,
          iscrivitiTorneo, generaGironi, avanzaAFinale,
          openRegistraMatchTorneo, closeTorneoMatchModal, submitTorneoMatch,
@@ -15,6 +15,8 @@ import { loadTornei, backToTornei, creaTorneo, openTorneo,
 import { loadStats }     from './stats.js';
 import { loadAdmin, adminAddPlayer, adminDeletePlayer, adminResetElo, adminDeleteMatch, adminEditMatch, adminLoadMatches, adminDeleteTorneo, adminIscriviTorneo, recalcAllElo, downloadPinBackup } from './admin.js';
 import { handleAvatarUpload } from './avatar.js';
+import { loadChallenges, sendChallenge, acceptChallenge,
+         refuseChallenge, cancelChallenge } from './challenges.js';
 import { loadBacheca, bachekaPost, bachekaDelete } from './bacheca.js';
 import { loadHomeFeed } from './feed.js';
 import { registerServiceWorker } from './push.js';
@@ -29,6 +31,7 @@ window._showProfile             = showProfile;
 window._backToTornei            = backToTornei;
 window._confirmMatch            = confirmMatch;
 window._loadMatchHistory        = loadMatchHistory;
+window._updateMatchPlayers      = updateMatchPlayers;
 window._adminDeletePlayer       = adminDeletePlayer;
 window._adminResetElo           = adminResetElo;
 window._adminDeleteMatch        = adminDeleteMatch;
@@ -49,6 +52,10 @@ window._confirmTorneoMatch      = confirmTorneoMatch;
 window._generaFinale            = generaFinale;
 window._chiudiTorneo            = chiudiTorneo;
 window._handleAvatarUpload      = (id, input) => handleAvatarUpload(id, input, showProfile);
+window._sendChallenge           = sendChallenge;
+window._acceptChallenge         = acceptChallenge;
+window._refuseChallenge         = refuseChallenge;
+window._cancelChallenge         = cancelChallenge;
 window._openMyProfile           = openMyProfile;
 window._saveBio                 = saveBio;
 window._togglePush              = togglePush;
@@ -64,12 +71,21 @@ window._addScoreToMatch         = addScoreToMatch;
 window._bachekaPost             = bachekaPost;
 window._bachekaDelete           = bachekaDelete;
 
-// FAB
+// =============================================
+// FAB MODAL
+// =============================================
 window._openFab = () => {
   if (!state.currentUser) return toast('Devi essere loggato', 'error');
+  // popola select avversario
+  if (state.allPlayers.length === 0) return toast('Dati non ancora caricati', 'error');
+  const sel = document.getElementById('fab_p2');
+  sel.innerHTML = '<option value="">Seleziona...</option>' +
+    state.allPlayers
+      .filter(p => p.id !== state.currentUser.id)
+      .map(p => `<option value="${p.id}">${p.nome} (${p.elo} Elo)</option>`)
+      .join('');
   document.getElementById('fab_score_row').style.display = 'none';
   document.getElementById('fabScoreToggle').textContent = '✏️ Risultato';
-  document.getElementById('fab_p2').value = '';
   document.getElementById('fabModal').classList.add('open');
 };
 
@@ -84,8 +100,8 @@ window._fabToggleScore = () => {
 window._fabOpenLive = () => {
   const p2Id = document.getElementById('fab_p2').value;
   if (!p2Id) return toast('Seleziona un avversario', 'error');
-  const p1Name = state.currentUser?.nome || 'Tu';
   const p2Name = state.allPlayers.find(p => p.id === p2Id)?.nome || '?';
+  const p1Name = state.currentUser?.nome || 'Tu';
   document.getElementById('fabModal').classList.remove('open');
   openScorekeeper({
     p1Name, p2Name,
@@ -97,33 +113,52 @@ window._fabSubmitClassic = async () => {
   const p2Id = document.getElementById('fab_p2').value;
   const s1   = parseInt(document.getElementById('fab_score1').value);
   const s2   = parseInt(document.getElementById('fab_score2').value);
-  if (!p2Id)           return toast('Seleziona un avversario', 'error');
-  if (isNaN(s1) || isNaN(s2)) return toast('Inserisci i punteggi', 'error');
+  if (!p2Id)               return toast('Seleziona un avversario', 'error');
+  if (isNaN(s1)||isNaN(s2)) return toast('Inserisci i punteggi', 'error');
   document.getElementById('fabModal').classList.remove('open');
   await submitMatch(state.currentUser.id, p2Id, s1, s2);
 };
 
 // =============================================
-// NAV
+// NAV SECTION MAP
+// =============================================
+const navMap = {
+  'ranking':     () => loadRanking(),
+  'partite':     () => loadPartite(),
+  'tornei':      () => loadTornei(),
+  'statistiche': () => loadStats(),
+  'sfide':       () => loadBacheca(),
+  'admin':       () => loadAdmin(),
+};
+
+// =============================================
+// BOTTOM NAV
 // =============================================
 function setupNav() {
-  const navMap = {
-    'ranking':     () => loadRanking(),
-    'partite':     () => loadPartite(),
-    'tornei':      () => loadTornei(),
-    'statistiche': () => loadStats(),
-    'sfide':       () => loadBacheca(),
-    'admin':       () => loadAdmin(),
-  };
-
-  document.querySelectorAll('.sidebar-nav-btn[data-section]').forEach(btn => {
+  document.querySelectorAll('.nav-item[data-section]').forEach(btn => {
     btn.addEventListener('click', () => {
       const section = btn.dataset.section;
-      showSection(section, btn);
+
+      // aggiorna active
+      document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      showSection(section);
       navMap[section]?.();
-      closeSidebar();
+
+      // mostra/nascondi FAB (solo su partite)
+      const fab = document.getElementById('fabBtn');
+      if (fab) fab.classList.toggle('hidden', section !== 'partite');
     });
   });
+}
+
+// =============================================
+// FAB
+// =============================================
+function setupFab() {
+  const fab = document.getElementById('fabBtn');
+  if (fab) fab.addEventListener('click', openScorekeeperForMatch);
 }
 
 // =============================================
@@ -132,7 +167,7 @@ function setupNav() {
 function setupHeader() {
   document.getElementById('loginBtn').addEventListener('click', openLoginModal);
   document.getElementById('logoutBtn').addEventListener('click', () =>
-    logout(() => { loadPartite(); updateChallengeBadge(); updateFabVisibility(); })
+    logout(() => { loadRanking(); updateChallengeBadge(); })
   );
   document.getElementById('helpBtn').addEventListener('click', () =>
     document.getElementById('helpModal').classList.add('open')
@@ -148,7 +183,6 @@ function setupAuthModal() {
     if (state.currentUser) {
       await updatePushIcon();
       await updateChallengeBadge();
-      updateFabVisibility();
       loadPartite();
     }
   });
@@ -161,16 +195,21 @@ function setupAuthModal() {
 }
 
 // =============================================
+// PARTITE FORM
+// =============================================
+function setupPartite() {
+  document.getElementById('btn-submit-match').addEventListener('click', openScorekeeperForMatch);
+  document.getElementById('btn-submit-match-classic').addEventListener('click', submitMatchClassic);
+  document.getElementById('match_p1').addEventListener('change', updateMatchPlayers);
+  document.getElementById('match_p2').addEventListener('change', updateMatchPlayers);
+}
+
+// =============================================
 // ADMIN
 // =============================================
 function setupAdmin() {
   document.getElementById('btn-admin-add-player').addEventListener('click', adminAddPlayer);
   document.getElementById('btn-download-backup').addEventListener('click', downloadPinBackup);
-}
-
-function updateFabVisibility() {
-  const fab = document.getElementById('fabBtn');
-  if (fab) fab.style.display = state.currentUser ? 'flex' : 'none';
 }
 
 // =============================================
@@ -179,8 +218,10 @@ function updateFabVisibility() {
 async function init() {
   initModalDismiss();
   setupNav();
+  setupFab();
   setupHeader();
   setupAuthModal();
+  setupPartite();
   setupAdmin();
 
   await registerServiceWorker();
@@ -191,10 +232,10 @@ async function init() {
     await updateChallengeBadge();
   }
 
-  updateFabVisibility();
   await loadRanking();
   loadHomeFeed();
 
+  // polling badge sfide ogni 30s
   setInterval(async () => {
     if (state.currentUser) await updateChallengeBadge();
   }, 30000);

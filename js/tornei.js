@@ -175,17 +175,17 @@ async function renderTorneo() {
   // Se siamo in fase finale o chiuso, i gironi diventano una sezione collassabile
   const inFaseFinale = t.fase === 'finale' || t.stato === 'chiuso';
 
-  if (!hasGironi && t.fase === 'girone' && isAdmin && t.stato === 'in_corso') {
-    // Nessun girone generato ancora — lista iscritti + bottone genera
+  if (!hasGironi && t.fase === 'girone') {
+    // Nessun girone generato ancora — lista iscritti visibile a tutti
     html += `<div class="card" style="margin-bottom:16px">
-      <div class="card-title">Giocatori Iscritti (${tPlayers.length})</div>
+      <div class="card-title">Iscritti (${tPlayers.length})</div>
       ${tPlayers.map(tp => {
         const p = state.allPlayers.find(p => p.id === tp.player_id);
         return `<div class="match-item"><div class="match-players">${avatarEl(p?.nome||'?')} <span>${p?.nome||'?'}</span></div></div>`;
       }).join('')}
-      ${tPlayers.length >= 4
+      ${isAdmin && t.stato === 'in_corso' ? (tPlayers.length >= 4
         ? `<button class="btn btn-primary" style="margin-top:12px" onclick="window._generaGironi('${t.id}')">⚡ Genera Gironi</button>`
-        : `<p style="color:var(--text2);font-size:13px;margin-top:12px">Servono almeno 4 giocatori per generare i gironi</p>`}
+        : `<p style="color:var(--text2);font-size:13px;margin-top:12px">Servono almeno 4 giocatori per generare i gironi</p>`) : ''}
     </div>`;
   } else if (hasGironi) {
     // Render gironi — collassabili se siamo in fase finale
@@ -378,12 +378,12 @@ function renderPartitiGirone(gPlayers, gMatchesAll, torneo, isAdmin) {
 
     if (!match) {
       return `<div class="torneo-match-item pending">
-        <div class="torneo-match-player">${avatarEl(p1?.nome||'?',24)} <span>${p1?.nome||'?'}</span></div>
+        <div class="torneo-match-player">${avatarEl(p1?.nome||'?',22)} <span>${p1?.nome||'?'}</span></div>
         <div style="text-align:center">
-          <div style="font-size:11px;color:var(--text3);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">vs</div>
+          <div style="font-size:10px;color:var(--text3);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">vs</div>
           ${canRegister ? `<button class="btn-sm btn-sm-confirm" onclick="window._openRegistraMatchTorneo('${torneo.id}','${p1id}','${p2id}','${gPlayers[0].girone}')">Registra</button>` : ''}
         </div>
-        <div class="torneo-match-player right">${avatarEl(p2?.nome||'?',24)} <span>${p2?.nome||'?'}</span></div>
+        <div class="torneo-match-player right">${avatarEl(p2?.nome||'?',22)} <span>${p2?.nome||'?'}</span></div>
       </div>`;
     }
 
@@ -397,21 +397,20 @@ function renderPartitiGirone(gPlayers, gMatchesAll, torneo, isAdmin) {
         (state.currentUser &&
          state.currentUser.id !== match.registrata_da &&
          (state.currentUser.id === p1id || state.currentUser.id === p2id));
-
-      return `<div class="torneo-match-item pending" style="opacity:0.8">
-        <div class="torneo-match-player"><span style="color:var(--text2)">${p1?.nome||'?'}</span></div>
+      return `<div class="torneo-match-item pending" style="opacity:0.85">
+        <div class="torneo-match-player" style="color:var(--text2)">${avatarEl(p1?.nome||'?',22)} <span>${p1?.nome||'?'}</span></div>
         <div style="text-align:center">
           <div class="torneo-match-score-big" style="color:var(--text2)">${s1 ?? '?'} — ${s2 ?? '?'}</div>
-          ${canConfirm ? `<button class="btn-sm btn-sm-confirm" style="margin-top:6px" onclick="window._confirmTorneoMatch('${match.id}')">✓ Conferma</button>` : '<div style="font-size:10px;color:var(--gold);margin-top:4px">⏳ In attesa</div>'}
+          ${canConfirm ? `<button class="btn-sm btn-sm-confirm" style="margin-top:5px" onclick="window._confirmTorneoMatch('${match.id}')">✓ Conferma</button>` : '<div style="font-size:10px;color:var(--gold);margin-top:3px">⏳ in attesa</div>'}
         </div>
-        <div class="torneo-match-player right"><span style="color:var(--text2)">${p2?.nome||'?'}</span></div>
+        <div class="torneo-match-player right" style="color:var(--text2)">${avatarEl(p2?.nome||'?',22)} <span>${p2?.nome||'?'}</span></div>
       </div>`;
     }
 
     return `<div class="torneo-match-item">
-      <div class="torneo-match-player">${avatarEl(p1?.nome||'?',28)} <span class="${w1 ? 'torneo-match-winner' : 'torneo-match-loser'}">${p1?.nome||'?'}</span></div>
+      <div class="torneo-match-player">${avatarEl(p1?.nome||'?',26)} <span class="${w1 ? 'torneo-match-winner' : 'torneo-match-loser'}">${p1?.nome||'?'}</span></div>
       <div class="torneo-match-score-big">${s1} — ${s2}</div>
-      <div class="torneo-match-player right">${avatarEl(p2?.nome||'?',28)} <span class="${w2 ? 'torneo-match-winner' : 'torneo-match-loser'}">${p2?.nome||'?'}</span></div>
+      <div class="torneo-match-player right">${avatarEl(p2?.nome||'?',26)} <span class="${w2 ? 'torneo-match-winner' : 'torneo-match-loser'}">${p2?.nome||'?'}</span></div>
     </div>`;
   }).join('');
 }
@@ -439,8 +438,12 @@ async function _doSubmitTorneoMatch(s1, s2) {
 
   if (!isValidScore(s1, s2)) return toast('Punteggio non valido (21 con +2)', 'error');
 
-  // Guard: esiste già un match per questo girone/slot con un vincitore?
-  const existing = await get('matches', `torneo_id=eq.${torneoId}&girone=eq.${girone}&select=id,winner_id`);
+  // Guard: esiste già un match tra questi due giocatori specifici con un vincitore?
+  const existing = await get('matches',
+    `torneo_id=eq.${torneoId}&girone=eq.${girone}` +
+    `&or=(and(player1_id.eq.${p1id},player2_id.eq.${p2id}),and(player1_id.eq.${p2id},player2_id.eq.${p1id}))` +
+    `&select=id,winner_id`
+  );
   if (existing && existing.some(m => m.winner_id)) {
     _torneoMatchPending = null;
     return toast('Partita già registrata per questo slot', 'error');
