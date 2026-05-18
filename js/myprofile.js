@@ -17,18 +17,35 @@ export async function openMyProfile() {
 async function renderMyProfile() {
   const u = state.currentUser;
 
-  const [player, matches, tPts, incoming, pushStatus] = await Promise.all([
+  const [player, matches, tPts, incoming, pushStatus, tornei] = await Promise.all([
     get('players', `id=eq.${u.id}&select=*`).then(r => r[0]),
     get('matches', `or=(player1_id.eq.${u.id},player2_id.eq.${u.id})&confermata=eq.true&order=data.desc&select=*`),
-    get('tournament_points', `player_id=eq.${u.id}&select=punti`),
+    get('tournament_points', `player_id=eq.${u.id}&select=punti,torneo_id`),
     get('challenges', `sfidato_id=eq.${u.id}&stato=eq.pending&order=creato_il.desc&select=*`),
-    getPushStatus()
+    getPushStatus(),
+    get('tournaments', 'stato=eq.chiuso&select=id,nome,tipo').catch(() => [])
   ]);
 
   state.currentUser = { ...state.currentUser, ...player };
   if (!state.allPlayers.length) state.allPlayers = await get('players', 'select=*');
 
   const bonus  = tPts.reduce((a, t) => a + t.punti, 0);
+
+  // Tornei vinti
+  const torneiVinti = [];
+  const torneiIds = tPts.map(tp => tp.torneo_id).filter(Boolean);
+  if (torneiIds.length > 0) {
+    const allPts = await get('tournament_points',
+      `torneo_id=in.(${torneiIds.join(',')})&select=torneo_id,player_id,punti`
+    ).catch(() => []);
+    for (const t of tornei) {
+      const ptsInTorneo = allPts.filter(tp => tp.torneo_id === t.id);
+      if (!ptsInTorneo.length) continue;
+      const maxPts = Math.max(...ptsInTorneo.map(tp => tp.punti));
+      const myPts  = ptsInTorneo.find(tp => tp.player_id === u.id);
+      if (myPts && myPts.punti === maxPts) torneiVinti.push(t);
+    }
+  }
   const winPct = player.partite_giocate > 0
     ? Math.round(player.vinte / player.partite_giocate * 100) : 0;
 
@@ -68,6 +85,15 @@ async function renderMyProfile() {
     </div>`;
   }).join('');
 
+  // Pallini ultime 5 partite
+  const formDotsHtml = matches.slice(0, 5).length > 0
+    ? `<div class="pmod-form-dots">${
+        matches.slice(0, 5).map(m =>
+          `<span class="pmod-dot ${m.winner_id === u.id ? 'win' : 'loss'}" title="${m.winner_id === u.id ? 'Vittoria' : 'Sconfitta'}"></span>`
+        ).join('')
+      }</div>`
+    : '';
+
   const recentHtml = matches.slice(0, 5).map(m => {
     const isWin = m.winner_id === u.id;
     const oppId = m.player1_id === u.id ? m.player2_id : m.player1_id;
@@ -100,7 +126,7 @@ async function renderMyProfile() {
     </div>
     <div class="pmod-hero">
       <div class="pmod-av-wrap">
-        <div class="pmod-av" style="background:${bg}18;color:${bg};${isLeader ? 'border-color:rgba(245,166,35,0.4)' : ''}">
+        <div class="pmod-av" style="background:${bg}18;color:${bg};${isLeader ? 'border-color:rgba(245,166,35,0.6);box-shadow:0 0 0 3px rgba(245,166,35,0.15)' : ''}">
           <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:none"
             onload="this.style.display='block';this.nextElementSibling.style.display='none'"
             onerror="this.style.display='none'">
@@ -111,12 +137,13 @@ async function renderMyProfile() {
           <input type="file" accept="image/*" style="display:none" onchange="window._handleAvatarUpload('${player.id}', this)">
         </label>
       </div>
-      <div style="padding-bottom:4px;min-width:0;flex:1">
+      <div style="padding-bottom:2px;min-width:0;flex:1">
         <div class="pmod-name">${player.nome}</div>
         <div class="pmod-meta">
           <span class="pmod-elo">${player.elo} ELO${bonus > 0 ? ` · +${bonus} bonus` : ''}</span>
           <span class="pmod-pos" style="${posStyle}">${rankLabel}</span>
         </div>
+        ${formDotsHtml}
       </div>
     </div>
     ${player.bio ? `<div class="pmod-bio">"${player.bio}"</div>` : ''}
@@ -127,6 +154,20 @@ async function renderMyProfile() {
       <div class="pmod-stat"><span class="pmod-sv" style="color:var(--gold)">${winPct}%</span><span class="pmod-sl">Win%</span></div>
     </div>
     ${incoming.length ? `<div class="pmod-section">${sectionHeader(`Sfide in arrivo (${incoming.length})`)}${challengesHtml}</div>` : ''}
+    ${torneiVinti.length > 0 ? `
+    <div class="pmod-section">
+      ${sectionHeader('Palmarès')}
+      <div class="pmod-palmares">
+        ${torneiVinti.map(t => `
+          <div class="pmod-trophy-row">
+            <div class="pmod-trophy-icon">🏆</div>
+            <div class="pmod-trophy-info">
+              <div class="pmod-trophy-name">${t.nome}</div>
+              <div class="pmod-trophy-tipo">${t.tipo}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>` : ''}
     <div class="pmod-section">${sectionHeader('Ultime partite')}${recentHtml}</div>
     <div class="pmod-section">
       ${sectionHeader('Notifiche push')}

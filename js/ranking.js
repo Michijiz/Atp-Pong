@@ -293,27 +293,32 @@ export async function showProfile(playerId) {
       </div>
 
       <!-- HERO -->
-      <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid var(--b1)">
+      <div style="display:flex;align-items:center;gap:16px;padding:16px;border-bottom:1px solid var(--b1)">
         <div style="position:relative;flex-shrink:0">
-          <div style="width:54px;height:54px;border-radius:50%;border:2px solid ${bg}44;overflow:hidden;background:${bg}18;color:${bg};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800">
+          <div style="width:80px;height:80px;border-radius:50%;border:3px solid ${bg}55;overflow:hidden;background:${bg}18;color:${bg};display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;font-family:var(--font-display);letter-spacing:1px">
             <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:none"
               onload="this.style.display='block';this.nextElementSibling.style.display='none'"
               onerror="this.style.display='none'">
             <span>${initials}</span>
           </div>
-          ${isOwner ? `<label style="position:absolute;bottom:0;right:0;width:20px;height:20px;border-radius:50%;background:var(--accent);border:2px solid var(--s1);display:flex;align-items:center;justify-content:center;cursor:pointer">
+          ${isOwner ? `<label style="position:absolute;bottom:0;right:0;width:22px;height:22px;border-radius:50%;background:var(--accent);border:2px solid var(--s1);display:flex;align-items:center;justify-content:center;cursor:pointer">
             <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--bg)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             <input type="file" accept="image/*" style="display:none" onchange="window._handleAvatarUpload('${player.id}', this)">
           </label>` : ''}
         </div>
         <div style="flex:1;min-width:0">
-          <div style="font-family:var(--font-display);font-size:22px;letter-spacing:1.5px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${player.nome}</div>
-          <div style="display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap">
-            <span style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--accent)">${player.elo} ELO</span>
-            ${rank > 0 ? `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:100px;background:rgba(200,240,0,0.08);color:var(--accent);border:1px solid rgba(200,240,0,0.2)">${rankLabel}</span>` : ''}
-            ${torneiVinti.map(t => `<span title="Vincitore: ${t.nome}" style="font-size:15px;line-height:1">🏆</span>`).join('')}
+          <div style="font-family:var(--font-display);font-size:28px;letter-spacing:2px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${player.nome}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:7px;flex-wrap:wrap">
+            <span style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--accent)">${player.elo} ELO</span>
+            ${rank > 0 ? `<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:100px;background:rgba(255,107,43,0.1);color:var(--accent);border:1px solid rgba(255,107,43,0.25)">${rankLabel}</span>` : ''}
+            ${torneiVinti.map(t => `<span title="Vincitore: ${t.nome}" style="font-size:17px;line-height:1">🏆</span>`).join('')}
           </div>
-          ${player.bio ? `<div style="font-size:11px;color:var(--text2);font-style:italic;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">"${player.bio}"</div>` : ''}
+          ${matches.length > 0 ? `<div class="pmod-form-dots" style="margin-top:8px">${
+            matches.slice(0,5).map(m =>
+              `<span class="pmod-dot ${m.winner_id === playerId ? 'win' : 'loss'}"></span>`
+            ).join('')
+          }</div>` : ''}
+          ${player.bio ? `<div style="font-size:12px;color:var(--text2);font-style:italic;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">"${player.bio}"</div>` : ''}
         </div>
       </div>
 
@@ -325,9 +330,9 @@ export async function showProfile(playerId) {
           ['Perse',   player.perse,           'var(--accent2)'],
           ['Win%',    winPct + '%',           'var(--gold)'],
         ].map(([label, val, color]) => `
-          <div style="background:var(--s1);padding:11px 4px;text-align:center">
-            <div style="font-family:var(--font-mono);font-size:17px;font-weight:700;color:${color};line-height:1">${val}</div>
-            <div style="font-size:9px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--text2);margin-top:4px">${label}</div>
+          <div style="background:var(--s1);padding:13px 4px;text-align:center">
+            <div style="font-family:var(--font-mono);font-size:21px;font-weight:700;color:${color};line-height:1">${val}</div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--text2);margin-top:5px">${label}</div>
           </div>`).join('')}
       </div>
 
@@ -338,18 +343,20 @@ export async function showProfile(playerId) {
         <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:8px 10px">${chartSvg}</div>
       </div>` : ''}
 
-      <!-- TORNEI VINTI -->
+      <!-- PALMARES -->
       ${torneiVinti.length > 0 ? `
-      <div style="padding:12px 14px;border-bottom:1px solid var(--b1)">
-        <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text2);margin-bottom:8px">Tornei vinti</div>
-        ${torneiVinti.map((t, idx) => `
-          <div style="display:flex;align-items:center;gap:10px;padding:7px 0;${idx < torneiVinti.length-1 ? 'border-bottom:1px solid var(--b1)' : ''}">
-            <div style="font-size:22px;flex-shrink:0">🏆</div>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.nome}</div>
-              <div style="font-size:10px;color:var(--gold);margin-top:2px;text-transform:uppercase;letter-spacing:0.5px;font-weight:700">${t.tipo}</div>
-            </div>
-          </div>`).join('')}
+      <div style="padding:14px 16px;border-bottom:1px solid var(--b1)">
+        <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text2);margin-bottom:10px">Palmarès</div>
+        <div class="pmod-palmares">
+          ${torneiVinti.map(t => `
+            <div class="pmod-trophy-row">
+              <div class="pmod-trophy-icon">🏆</div>
+              <div class="pmod-trophy-info">
+                <div class="pmod-trophy-name">${t.nome}</div>
+                <div class="pmod-trophy-tipo">${t.tipo}</div>
+              </div>
+            </div>`).join('')}
+        </div>
       </div>` : ''}
 
       <!-- ULTIME PARTITE -->
