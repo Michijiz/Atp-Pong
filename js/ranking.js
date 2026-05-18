@@ -72,7 +72,7 @@ if (podium) podium.innerHTML = '';
     }
   }
   document.getElementById('heroPills').innerHTML =
-    `<div class="pill">Partite <strong>${players.reduce((a, p) => a + p.partite_giocate, 0)}</strong></div>
+    `<div class="pill">Partite <strong>${Math.round(players.reduce((a, p) => a + p.partite_giocate, 0) / 2)}</strong></div>
      <div class="pill">Top ELO <strong>${Math.max(...players.map(p => p.elo), 1000)}</strong></div>
      ${streakHtml}`;
 
