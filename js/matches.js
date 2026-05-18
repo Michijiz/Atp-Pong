@@ -246,13 +246,15 @@ export async function loadMatchHistory(filterMine = false) {
     const canAddScore = noScore && (isAdmin || isInvolved);
 
     return `<div class="match-item">
-      <div class="match-players" style="flex-wrap:wrap;gap:6px">
-        <span class="${m.winner_id === m.player1_id ? 'match-winner' : 'match-loser'}">${p1?.nome || '?'}</span>
-        <span class="match-vs">vs</span>
-        <span class="${m.winner_id === m.player2_id ? 'match-winner' : 'match-loser'}">${p2?.nome || '?'}</span>
+      <div class="match-item-top">
+        <div class="match-players">
+          <span class="${m.winner_id === m.player1_id ? 'match-winner' : 'match-loser'}">${p1?.nome || '?'}</span>
+          <span class="match-vs">vs</span>
+          <span class="${m.winner_id === m.player2_id ? 'match-winner' : 'match-loser'}">${p2?.nome || '?'}</span>
+        </div>
         ${score ? `<span class="match-score">${score}</span>` : ''}
       </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <div class="match-item-bottom">
         ${canAddScore ? `<button class="btn-sm btn-sm-confirm" onclick="window._addScoreToMatch('${m.id}','${m.player1_id}','${m.player2_id}','${p1?.nome||'P1'}','${p2?.nome||'P2'}')">+ Score</button>` : ''}
         <span class="badge ${m.tipo === 'torneo' ? 'badge-torneo' : 'badge-libera'}">${m.tipo}</span>
         ${!m.confermata ? '<span class="badge badge-pending">In attesa</span>' : ''}
