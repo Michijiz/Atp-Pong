@@ -74,7 +74,7 @@ export async function loadTornei() {
       </div>
       <div class="form-group">
         <label class="form-label">Modalità</label>
-        <select class="form-select" id="t_modalita">
+        <select class="form-select" id="t_modalita" onchange="var w=document.getElementById('t_punteggio_gironi_wrap');if(w)w.style.display=this.value==='girone'?'':'none'">
           <option value="girone">🔄 Fase a gironi → Finale</option>
           <option value="eliminazione">⚡ Eliminazione diretta</option>
         </select>
@@ -88,7 +88,6 @@ export async function loadTornei() {
         <div style="font-size:11px;color:var(--text2);margin-top:4px">La fase finale usa sempre il classico a 21</div>
       </div>
       <button class="btn btn-primary" onclick="window._creaTorneo()">Crea Torneo</button>
-      <script>document.getElementById('t_modalita')?.addEventListener('change',function(){document.getElementById('t_punteggio_gironi_wrap').style.display=this.value==='girone'?'':'none'});</script>
     </div>`;
   }
 
@@ -375,7 +374,9 @@ async function _renderPannelloIscrizioniAdmin(torneoId, tPlayers) {
     state.allPlayers = await get('players', 'select=*');
   }
   const iscrittiIds = new Set(tPlayers.map(tp => tp.player_id));
-  const tutti = state.allPlayers.filter(p => p.ruolo !== 'admin' || iscrittiIds.has(p.id));
+  const tutti = [...state.allPlayers]
+    .filter(p => p.active !== false)
+    .sort((a, b) => a.nome.localeCompare(b.nome));
 
   const righe = tutti.map(p => {
     const iscritto = iscrittiIds.has(p.id);
