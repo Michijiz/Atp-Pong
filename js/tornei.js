@@ -340,7 +340,10 @@ async function renderTorneo() {
   if (finaleConfermata) {
     const vincitore = state.allPlayers.find(p => p.id === finaleConfermata.winner_id);
     const campHtml = `<div class="tn-campione" style="margin-bottom:16px">
-      <div class="tn-campione-trophy">🏆</div>
+      <div class="tn-campione-avatar-wrap">
+        ${avatarEl(vincitore?.nome || '?', 80, vincitore ? getAvatarUrl(vincitore.id) : null)}
+        <div class="tn-campione-trophy-badge">🏆</div>
+      </div>
       <div class="tn-campione-label">CAMPIONE</div>
       <div class="tn-campione-nome">${vincitore?.nome || '?'}</div>
       ${t.stato === 'in_corso' && isAdmin
