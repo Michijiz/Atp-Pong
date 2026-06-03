@@ -574,37 +574,61 @@ body::after {
 .torneo-match-loser  { color: var(--text2); }
 .spareggio-banner { background: rgba(212,133,10,0.06); border: 1px solid rgba(212,133,10,0.2); border-radius: 9px; padding: 12px; margin-bottom: 14px; font-size: 12px; color: var(--gold); }
 
-/* ── BRACKET STACK (verticale, mobile-first) ─────── */
-.tn-bracket-stack { display: flex; flex-direction: column; gap: 6px; }
-
-.tn-bracket-round { background: var(--s1); border: 1px solid var(--b1); border-radius: var(--radius); overflow: hidden; }
-.tn-bracket-round-label {
-  background: var(--s2); border-bottom: 1px solid var(--b1);
-  padding: 8px 14px; font-size: 9px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 1.5px; color: var(--text2);
+/* ── BRACKET ORIZZONTALE CLASSICO ────────────────── */
+.tn-bracket-wrap { overflow-x: auto; padding-bottom: 12px; margin-bottom: 8px; }
+.tn-bracket-schema {
+  display: flex; gap: 0; align-items: flex-start;
+  min-width: max-content; padding: 4px 0;
 }
-.tn-bracket-matches { padding: 8px 12px; display: flex; flex-direction: column; gap: 8px; }
 
-.tn-bracket-match {
-  background: var(--s2); border: 1px solid var(--b1);
+.tn-bracket-col { display: flex; flex-direction: column; min-width: 160px; }
+.tn-bracket-col-label {
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.5px; color: var(--text2);
+  text-align: center; padding: 6px 12px 10px; white-space: nowrap;
+}
+.tn-bracket-col-matches {
+  display: flex; flex-direction: column;
+  gap: 8px; padding: 0 8px; flex: 1;
+  justify-content: space-around;
+}
+
+/* Card singolo match nel bracket */
+.tn-bm-card {
+  background: var(--s1); border: 1px solid var(--b1);
   border-radius: 10px; overflow: hidden;
+  position: relative;
 }
-.tn-bracket-match.done { border-color: var(--b2); }
+.tn-bm-card.done { border-color: var(--b2); }
+.tn-bm-card::after {
+  content: ''; position: absolute;
+  right: -8px; top: 50%; transform: translateY(-50%);
+  width: 8px; height: 2px; background: var(--b2);
+}
+.tn-bracket-col:last-child .tn-bm-card::after { display: none; }
 
-.tn-bm-player {
+.tn-bm-row {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 9px 12px; gap: 8px; transition: background 0.1s;
+  padding: 8px 10px; gap: 6px;
+  border-bottom: 1px solid var(--b1); transition: background 0.1s;
 }
-.tn-bm-player:first-child { border-bottom: 1px solid var(--b1); }
-.tn-bm-player.winner { background: rgba(254,120,18,0.06); }
-.tn-bm-player.tbd { opacity: 0.5; }
-.tn-bm-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
-.tn-bm-player.winner .tn-bm-name { font-weight: 700; color: var(--accent); }
-.tn-bm-player.tbd .tn-bm-name { font-style: italic; color: var(--text2); }
-.tn-bm-score { font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: var(--text2); flex-shrink: 0; min-width: 24px; text-align: right; }
-.tn-bm-player.winner .tn-bm-score { color: var(--accent); }
-.tn-bm-divider { height: 0; }
-.tn-bm-action { padding: 7px 12px; border-top: 1px dashed var(--b2); display: flex; align-items: center; gap: 8px; }
+.tn-bm-row:last-of-type { border-bottom: none; }
+.tn-bm-row.winner { background: rgba(254,120,18,0.06); }
+.tn-bm-row.tbd { opacity: 0.45; }
+
+.tn-bm-row-player { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; overflow: hidden; }
+.tn-bm-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tn-bm-row.winner .tn-bm-name { font-weight: 700; color: var(--accent); }
+.tn-bm-row.tbd .tn-bm-name { font-style: italic; color: var(--text2); }
+.tn-bm-score { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--text2); flex-shrink: 0; min-width: 22px; text-align: right; }
+.tn-bm-row.winner .tn-bm-score { color: var(--accent); }
+.tn-bm-avatar-ph { width: 22px; height: 22px; border-radius: 50%; background: var(--s3); flex-shrink: 0; }
+
+.tn-bm-status {
+  padding: 5px 10px; border-top: 1px dashed var(--b2);
+  font-size: 10px; color: var(--text2); text-align: center;
+}
+.tn-bm-status.pending { color: var(--gold); }
 
 /* ── CAMPIONE HERO ───────────────────────────────── */
 .tn-campione {

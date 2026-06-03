@@ -335,6 +335,25 @@ async function renderTorneo() {
     }
   }
 
+  // ---- CAMPIONE HERO (sopra tutto in fase finale/chiuso) ----
+  const finaleConfermata = allMatches.find(m => m.girone?.startsWith('finale') && m.confermata && m.winner_id);
+  if (finaleConfermata) {
+    const vincitore = state.allPlayers.find(p => p.id === finaleConfermata.winner_id);
+    const campHtml = `<div class="tn-campione" style="margin-bottom:16px">
+      <div class="tn-campione-trophy">🏆</div>
+      <div class="tn-campione-label">CAMPIONE</div>
+      <div class="tn-campione-nome">${vincitore?.nome || '?'}</div>
+      ${t.stato === 'in_corso' && isAdmin
+        ? `<button class="btn btn-primary" style="margin-top:16px;width:auto;padding:8px 20px" onclick="window._chiudiTorneo()">🏅 Assegna Punti e Chiudi</button>`
+        : ''}
+    </div>`;
+    // Inserisci dopo il primo blocco (header torneo)
+    const firstDivEnd = html.indexOf('</div>', html.indexOf('class="tn-header"'));
+    if (firstDivEnd !== -1) {
+      html = html.slice(0, firstDivEnd + 6) + campHtml + html.slice(firstDivEnd + 6);
+    }
+  }
+
   // ---- FASE FINALE / BRACKET ----
   if (t.fase === 'finale' || (t.stato === 'chiuso' && allMatches.some(m => m.girone?.match(/^(quarti|semifinale|finale)/)))) {
     const brackMatches = allMatches.filter(m => !m.girone?.includes('_spareggio'));
@@ -1104,7 +1123,7 @@ async function _autoAvanzaEliminazione(torneoId, gironeName) {
 }
 
 // =============================================
-// BRACKET FINALE — render redesignato
+// BRACKET FINALE — schema orizzontale classico
 // =============================================
 
 function renderBracket(allMatches, torneo, isAdmin) {
@@ -1124,21 +1143,6 @@ function renderBracket(allMatches, torneo, isAdmin) {
     return '<div class="empty"><p>Nessuna partita finale ancora</p></div>';
   }
 
-  // Vincitore del torneo in cima se disponibile
-  const finaleMatch = rounds['finale']?.[0];
-  let vincitoreHtml = '';
-  if (finaleMatch?.confermata && finaleMatch?.winner_id) {
-    const vincitore = state.allPlayers.find(p => p.id === finaleMatch.winner_id);
-    vincitoreHtml = `<div class="tn-campione">
-      <div class="tn-campione-trophy">🏆</div>
-      <div class="tn-campione-label">CAMPIONE</div>
-      <div class="tn-campione-nome">${vincitore?.nome || '?'}</div>
-      ${torneo.stato === 'in_corso' && isAdmin
-        ? `<button class="btn btn-primary" style="margin-top:16px;width:auto;padding:8px 20px" onclick="window._chiudiTorneo()">🏅 Assegna Punti e Chiudi</button>`
-        : ''}
-    </div>`;
-  }
-
   const labelMap = {
     finale:    'FINALE',
     semifinale:'SEMIFINALI',
@@ -1146,23 +1150,24 @@ function renderBracket(allMatches, torneo, isAdmin) {
     ottavi:    'OTTAVI DI FINALE'
   };
 
-  let html = vincitoreHtml;
-  html += `<div class="tn-bracket-stack">`;
+  // Schema orizzontale: rounds da sinistra (ottavi) a destra (finale)
+  let html = `<div class="tn-bracket-wrap"><div class="tn-bracket-schema">`;
 
-  for (const roundName of [...presentRounds].reverse()) {
+  for (const roundName of presentRounds) {
     const rMatches = rounds[roundName];
     const label    = labelMap[roundName] || roundName.toUpperCase();
-    html += `<div class="tn-bracket-round">
-      <div class="tn-bracket-round-label">${label}</div>
-      <div class="tn-bracket-matches">`;
+
+    html += `<div class="tn-bracket-col">
+      <div class="tn-bracket-col-label">${label}</div>
+      <div class="tn-bracket-col-matches">`;
 
     rMatches.forEach(m => {
-      const p1  = state.allPlayers.find(p => p.id === m.player1_id);
-      const p2  = state.allPlayers.find(p => p.id === m.player2_id);
-      const s1  = m.player1_id ? (m.punteggio1 ?? '') : '';
-      const s2  = m.player2_id ? (m.punteggio2 ?? '') : '';
-      const w1  = m.winner_id === m.player1_id;
-      const w2  = m.winner_id === m.player2_id;
+      const p1 = state.allPlayers.find(p => p.id === m.player1_id);
+      const p2 = state.allPlayers.find(p => p.id === m.player2_id);
+      const s1 = m.player1_id ? (m.punteggio1 ?? '') : '';
+      const s2 = m.player2_id ? (m.punteggio2 ?? '') : '';
+      const w1 = m.winner_id === m.player1_id;
+      const w2 = m.winner_id === m.player2_id;
 
       const isMyMatch   = state.currentUser && (state.currentUser.id === m.player1_id || state.currentUser.id === m.player2_id || isAdmin);
       const canRegister = isMyMatch && !m.confermata && torneo.stato === 'in_corso' && m.player1_id && m.player2_id && !m.winner_id;
@@ -1173,54 +1178,49 @@ function renderBracket(allMatches, torneo, isAdmin) {
          (state.currentUser.id === m.player1_id || state.currentUser.id === m.player2_id))
       );
 
-      html += `<div class="tn-bracket-match ${m.confermata ? 'done' : ''}">
-        <div class="tn-bm-player ${w1 ? 'winner' : ''} ${!m.player1_id ? 'tbd' : ''}">
-          <div style="display:flex;align-items:center;gap:7px;min-width:0">
-            ${m.player1_id ? avatarEl(p1?.nome||'?', 26, getAvatarUrl(p1?.id)) : '<div style="width:26px;height:26px;border-radius:50%;background:var(--s3)"></div>'}
+      const statusHtml = canRegister
+        ? `<div class="tn-bm-status"><button class="btn-sm btn-sm-confirm" onclick="window._openRegistraMatchTorneo('${torneo.id}','${m.player1_id}','${m.player2_id}','${m.girone}')">Registra</button></div>`
+        : canConfirm
+          ? `<div class="tn-bm-status"><button class="btn-sm btn-sm-confirm" onclick="window._confirmTorneoMatch('${m.id}')">✓ Conferma</button></div>`
+          : !m.confermata && m.winner_id !== null
+            ? '<div class="tn-bm-status pending">⏳ In attesa</div>'
+            : !m.confermata && !m.winner_id && m.player1_id && m.player2_id
+              ? '<div class="tn-bm-status">Da giocare</div>'
+              : '';
+
+      html += `<div class="tn-bm-card ${m.confermata ? 'done' : ''}">
+        <div class="tn-bm-row ${w1 ? 'winner' : ''} ${!m.player1_id ? 'tbd' : ''}">
+          <div class="tn-bm-row-player">
+            ${m.player1_id ? avatarEl(p1?.nome||'?', 22, getAvatarUrl(p1?.id)) : '<div class="tn-bm-avatar-ph"></div>'}
             <span class="tn-bm-name">${p1?.nome || 'TBD'}</span>
           </div>
           <span class="tn-bm-score">${s1}</span>
         </div>
-        <div class="tn-bm-divider"></div>
-        <div class="tn-bm-player ${w2 ? 'winner' : ''} ${!m.player2_id ? 'tbd' : ''}">
-          <div style="display:flex;align-items:center;gap:7px;min-width:0">
-            ${m.player2_id ? avatarEl(p2?.nome||'?', 26, getAvatarUrl(p2?.id)) : '<div style="width:26px;height:26px;border-radius:50%;background:var(--s3)"></div>'}
+        <div class="tn-bm-row ${w2 ? 'winner' : ''} ${!m.player2_id ? 'tbd' : ''}">
+          <div class="tn-bm-row-player">
+            ${m.player2_id ? avatarEl(p2?.nome||'?', 22, getAvatarUrl(p2?.id)) : '<div class="tn-bm-avatar-ph"></div>'}
             <span class="tn-bm-name">${p2?.nome || 'TBD'}</span>
           </div>
           <span class="tn-bm-score">${s2}</span>
         </div>
-        ${canRegister
-          ? `<div class="tn-bm-action"><button class="btn-sm btn-sm-confirm" onclick="window._openRegistraMatchTorneo('${torneo.id}','${m.player1_id}','${m.player2_id}','${m.girone}')">Registra</button></div>`
-          : canConfirm
-            ? `<div class="tn-bm-action"><button class="btn-sm btn-sm-confirm" onclick="window._confirmTorneoMatch('${m.id}')">✓ Conferma</button></div>`
-            : !m.confermata && m.winner_id !== null
-              ? '<div class="tn-bm-action"><span style="font-size:10px;color:var(--gold)">⏳ In attesa</span></div>'
-              : !m.confermata && !m.winner_id && m.player1_id && m.player2_id
-                ? '<div class="tn-bm-action"><span style="font-size:10px;color:var(--text2)">Da giocare</span></div>'
-                : ''
-        }
+        ${statusHtml}
       </div>`;
     });
 
     html += `</div></div>`;
-
-    // Pulsante genera semifinali se quarti finiti
-    if (roundName === 'quarti') {
-      const quartiDone = rMatches.every(m => m.confermata);
-      const semiExist  = presentRounds.includes('semifinale');
-      if (quartiDone && !semiExist && isAdmin) {
-        html += `<button class="btn btn-primary" style="width:100%;margin:8px 0" onclick="window._generaSemiDaQuarti('${torneo.id}')">Genera Semifinali →</button>`;
-      }
-    }
   }
 
-  html += `</div>`;
+  html += `</div></div>`;
 
-  // Genera finale se semifinali finite
-  if (presentRounds.includes('semifinale') && !presentRounds.includes('finale')) {
-    const semis = rounds['semifinale'];
-    if (semis?.every(m => m.confermata) && isAdmin) {
-      html += `<button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="window._generaFinale('${torneo.id}')">Genera Finale →</button>`;
+  // Pulsanti admin
+  if (isAdmin && torneo.stato === 'in_corso') {
+    if (presentRounds.includes('quarti') && !presentRounds.includes('semifinale')) {
+      const quartiDone = rounds['quarti']?.every(m => m.confermata);
+      if (quartiDone) html += `<button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="window._generaSemiDaQuarti('${torneo.id}')">Genera Semifinali →</button>`;
+    }
+    if (presentRounds.includes('semifinale') && !presentRounds.includes('finale')) {
+      const semiDone = rounds['semifinale']?.every(m => m.confermata);
+      if (semiDone) html += `<button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="window._generaFinale('${torneo.id}')">Genera Finale →</button>`;
     }
   }
 
