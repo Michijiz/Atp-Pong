@@ -501,41 +501,61 @@ body::after {
 .info-pill-box { background: var(--s2); border: 1px solid var(--b1); border-radius: 9px; padding: 10px; }
 .info-tipo-row { display: flex; align-items: center; gap: 10px; }
 
-/* ── TORNEO CARDS ────────────────────────────────── */
+/* ── TORNEO CARDS (lista) ─────────────────────────── */
 .torneo-card { background: var(--s1); border: 1px solid var(--b1); border-radius: var(--radius); padding: 18px; margin-bottom: 10px; cursor: pointer; transition: all 0.15s; }
 .torneo-card:hover { border-color: var(--accent); transform: translateY(-2px); }
 .torneo-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .torneo-nome { font-family: var(--font-display); font-size: 20px; letter-spacing: 1px; }
 .torneo-tipo-badge { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 100px; text-transform: uppercase; letter-spacing: 0.5px; }
-.tipo-amichevole { background: rgba(200,240,0,0.08); color: var(--accent); border: 1px solid rgba(200,240,0,0.2); }
+.tipo-amichevole { background: rgba(254,120,18,0.08); color: var(--accent); border: 1px solid rgba(254,120,18,0.25); }
 .tipo-importante { background: rgba(56,189,248,0.08); color: var(--accent3); border: 1px solid rgba(56,189,248,0.2); }
-.tipo-stagionale { background: rgba(245,166,35,0.08); color: var(--gold); border: 1px solid rgba(245,166,35,0.2); }
+.tipo-stagionale { background: rgba(212,133,10,0.08); color: var(--gold); border: 1px solid rgba(212,133,10,0.25); }
 .torneo-meta { display: flex; gap: 14px; font-size: 11px; color: var(--text2); flex-wrap: wrap; }
 
-/* ── GIRONE TABLE ────────────────────────────────── */
-.girone-title { font-family: var(--font-display); font-size: 17px; letter-spacing: 1px; margin-bottom: 10px; color: var(--accent); }
-.girone-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 18px; }
+/* ── TORNEO DETAIL HEADER ────────────────────────── */
+.tn-header { background: var(--s1); border: 1px solid var(--b1); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; }
+.tn-header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.tn-nome { font-family: var(--font-display); font-size: 30px; letter-spacing: 2px; line-height: 1; }
+.tn-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.tn-pill { background: var(--s2); border: 1px solid var(--b1); border-radius: 100px; padding: 4px 10px; font-size: 11px; color: var(--text2); white-space: nowrap; }
+.tn-pill-accent { background: rgba(254,120,18,0.08); border-color: rgba(254,120,18,0.25); color: var(--accent); font-weight: 600; }
+
+/* ── TORNEO FORMATO BADGE ────────────────────────── */
+.tn-formato-badge { font-size: 12px; color: var(--accent3); background: rgba(56,189,248,0.06); border: 1px solid rgba(56,189,248,0.15); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-weight: 500; }
+
+/* ── ROSTER PANEL ADMIN ──────────────────────────── */
+.tn-roster-panel { background: var(--s1); border: 1px solid var(--b1); border-radius: var(--radius); padding: 16px; }
+.tn-roster-list { display: flex; flex-direction: column; gap: 2px; }
+.tn-roster-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--b1); }
+.tn-roster-row:last-child { border-bottom: none; }
+
+/* ── GIRONE CARD ─────────────────────────────────── */
+.tn-girone-card { }
+.tn-girone-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.girone-title { font-family: var(--font-display); font-size: 18px; letter-spacing: 1px; color: var(--accent); }
+.girone-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 14px; }
 .girone-table th { text-align: left; padding: 7px 9px; font-size: 9px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--b1); }
-.girone-table td { padding: 11px 9px; border-bottom: 1px solid rgba(30,40,54,0.4); }
+.girone-table td { padding: 10px 9px; border-bottom: 1px solid var(--b1); }
 .girone-table tr:last-child td { border-bottom: none; }
 .girone-table tr.qualificato td:first-child { border-left: 3px solid var(--accent); }
+.girone-table tr.qualificato { background: rgba(254,120,18,0.025); }
 
-/* ── BRACKET ─────────────────────────────────────── */
-.bracket-container { overflow-x: auto; padding-bottom: 8px; }
-.bracket { display: flex; gap: 28px; min-width: max-content; padding: 8px 0; }
-.bracket-round { display: flex; flex-direction: column; }
-.bracket-round-title { font-size: 9px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; text-align: center; }
-.bracket-match { background: var(--s2); border: 1px solid var(--b1); border-radius: 9px; width: 150px; overflow: hidden; margin-bottom: 7px; }
-.bracket-player { padding: 8px 11px; font-size: 12px; display: flex; align-items: center; justify-content: space-between; gap: 7px; }
-.bracket-player:first-child { border-bottom: 1px solid var(--b1); }
-.bracket-player.winner { color: var(--accent); font-weight: 700; background: rgba(200,240,0,0.05); }
-.bracket-player.tbd { color: var(--text2); font-style: italic; }
-.bracket-score { font-family: var(--font-mono); font-size: 11px; color: var(--text2); flex-shrink: 0; }
+/* ── COLLAPSIBLE GIRONI ──────────────────────────── */
+.tn-collapse-wrap { }
+.tn-collapse-btn {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: var(--s2); border: 1px solid var(--b1);
+  color: var(--text2); font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
+  cursor: pointer; padding: 10px 14px; border-radius: var(--radius);
+  text-transform: uppercase; letter-spacing: 1px;
+  transition: border-color 0.15s, color 0.15s;
+}
+.tn-collapse-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-/* ── TORNEO MATCH ────────────────────────────────── */
+/* ── TORNEO MATCH ITEMS ──────────────────────────── */
 .torneo-match-item {
   display: grid; grid-template-columns: 1fr auto 1fr;
-  align-items: center; padding: 14px 0;
+  align-items: center; padding: 12px 0;
   border-bottom: 1px solid var(--b1); gap: 10px;
 }
 .torneo-match-item:last-child { border-bottom: none; }
@@ -547,12 +567,54 @@ body::after {
 .torneo-match-player span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .torneo-match-player.right { flex-direction: row-reverse; text-align: right; }
 .torneo-match-score-big {
-  font-family: var(--font-mono); font-size: 28px; font-weight: 800;
+  font-family: var(--font-mono); font-size: 26px; font-weight: 800;
   color: var(--text); text-align: center; white-space: nowrap; letter-spacing: 2px;
 }
 .torneo-match-winner { color: var(--accent); font-weight: 700; }
 .torneo-match-loser  { color: var(--text2); }
 .spareggio-banner { background: rgba(212,133,10,0.06); border: 1px solid rgba(212,133,10,0.2); border-radius: 9px; padding: 12px; margin-bottom: 14px; font-size: 12px; color: var(--gold); }
+
+/* ── BRACKET STACK (verticale, mobile-first) ─────── */
+.tn-bracket-stack { display: flex; flex-direction: column; gap: 6px; }
+
+.tn-bracket-round { background: var(--s1); border: 1px solid var(--b1); border-radius: var(--radius); overflow: hidden; }
+.tn-bracket-round-label {
+  background: var(--s2); border-bottom: 1px solid var(--b1);
+  padding: 8px 14px; font-size: 9px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.5px; color: var(--text2);
+}
+.tn-bracket-matches { padding: 8px 12px; display: flex; flex-direction: column; gap: 8px; }
+
+.tn-bracket-match {
+  background: var(--s2); border: 1px solid var(--b1);
+  border-radius: 10px; overflow: hidden;
+}
+.tn-bracket-match.done { border-color: var(--b2); }
+
+.tn-bm-player {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 12px; gap: 8px; transition: background 0.1s;
+}
+.tn-bm-player:first-child { border-bottom: 1px solid var(--b1); }
+.tn-bm-player.winner { background: rgba(254,120,18,0.06); }
+.tn-bm-player.tbd { opacity: 0.5; }
+.tn-bm-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+.tn-bm-player.winner .tn-bm-name { font-weight: 700; color: var(--accent); }
+.tn-bm-player.tbd .tn-bm-name { font-style: italic; color: var(--text2); }
+.tn-bm-score { font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: var(--text2); flex-shrink: 0; min-width: 24px; text-align: right; }
+.tn-bm-player.winner .tn-bm-score { color: var(--accent); }
+.tn-bm-divider { height: 0; }
+.tn-bm-action { padding: 7px 12px; border-top: 1px dashed var(--b2); display: flex; align-items: center; gap: 8px; }
+
+/* ── CAMPIONE HERO ───────────────────────────────── */
+.tn-campione {
+  background: var(--s1); border: 2px solid var(--gold);
+  border-radius: var(--radius); padding: 28px 20px;
+  text-align: center; margin-bottom: 16px;
+}
+.tn-campione-trophy { font-size: 48px; line-height: 1; margin-bottom: 6px; }
+.tn-campione-label { font-size: 10px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }
+.tn-campione-nome { font-family: var(--font-display); font-size: 40px; letter-spacing: 4px; color: var(--gold); }
 
 /* ── FEED EVENTS ─────────────────────────────────── */
 .feed-event { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-left: 2px solid var(--b2); background: var(--s1); border-radius: 0 9px 9px 0; margin-bottom: 7px; transition: background 0.15s; animation: feedIn 0.3s ease; }
