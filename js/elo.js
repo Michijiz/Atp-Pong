@@ -32,3 +32,14 @@ export function isValidScore(s1, s2) {
   if (max > 21 && max - min === 2) return true;
   return false;
 }
+
+// Valida punteggio a 11: vince a 11 con +2, o overtime con +2
+export function isValidScore11(s1, s2) {
+  if (s1 < 0 || s2 < 0) return false;
+  const max = Math.max(s1, s2);
+  const min = Math.min(s1, s2);
+  if (max < 11) return false;
+  if (max === 11 && min <= 9) return true;
+  if (max > 11 && max - min === 2) return true;
+  return false;
+}

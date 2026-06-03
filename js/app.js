@@ -11,7 +11,8 @@ import { loadPartite, submitMatch, confirmMatch, loadMatchHistory, addScoreToMat
 import { loadTornei, backToTornei, creaTorneo, openTorneo,
          iscrivitiTorneo, generaGironi, avanzaAFinale,
          openRegistraMatchTorneo, closeTorneoMatchModal, submitTorneoMatch,
-         confirmTorneoMatch, generaFinale, chiudiTorneo } from './tornei.js';
+         confirmTorneoMatch, generaFinale, chiudiTorneo,
+         generaBracketEliminazione } from './tornei.js';
 import { loadStats }     from './stats.js';
 import { loadAdmin, adminAddPlayer, adminDeletePlayer, adminResetElo, adminResetPin, adminDeleteMatch, adminEditMatch, adminLoadMatches, adminDeleteTorneo, adminIscriviTorneo, recalcAllElo, downloadPinBackup } from './admin.js';
 import { handleAvatarUpload } from './avatar.js';
@@ -48,9 +49,10 @@ window._avanzaAFinale           = avanzaAFinale;
 window._openRegistraMatchTorneo = openRegistraMatchTorneo;
 window._closeTorneoMatchModal   = closeTorneoMatchModal;
 window._submitTorneoMatch       = submitTorneoMatch;
-window._confirmTorneoMatch      = confirmTorneoMatch;
-window._generaFinale            = generaFinale;
-window._chiudiTorneo            = chiudiTorneo;
+window._confirmTorneoMatch         = confirmTorneoMatch;
+window._generaFinale               = generaFinale;
+window._chiudiTorneo               = chiudiTorneo;
+window._generaBracketEliminazione  = generaBracketEliminazione;
 window._handleAvatarUpload      = (id, input) => handleAvatarUpload(id, input, showProfile);
 window._sendChallenge           = sendChallenge;
 window._acceptChallenge         = acceptChallenge;

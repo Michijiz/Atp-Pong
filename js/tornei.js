@@ -3,7 +3,7 @@ import { state } from './state.js';
 import { toast, openModal, closeModal, confirmDialog } from './ui.js';
 import { avatarEl, getAvatarUrl } from './avatar.js';
 import { getKFactor } from './elo.js';
-import { isValidScore } from './elo.js';
+import { isValidScore, isValidScore11 } from './elo.js';
 import { TORNEO_CONFIG } from './config.js';
 import { loadRanking } from './ranking.js';
 import { openScorekeeper } from './Scorekeeper.js';
@@ -48,7 +48,23 @@ export async function loadTornei() {
           <option value="stagionale">🟡 Stagionale — x2 Elo | Vincitore +200pts</option>
         </select>
       </div>
+      <div class="form-group">
+        <label class="form-label">Modalità</label>
+        <select class="form-select" id="t_modalita">
+          <option value="girone">🔄 Fase a gironi → Finale</option>
+          <option value="eliminazione">⚡ Eliminazione diretta</option>
+        </select>
+      </div>
+      <div class="form-group" id="t_punteggio_gironi_wrap">
+        <label class="form-label">Punteggio fase gironi</label>
+        <select class="form-select" id="t_punteggio_gironi">
+          <option value="21">🎯 Classico a 21 punti</option>
+          <option value="11">⚡ Veloce a 11 punti</option>
+        </select>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px">La fase finale usa sempre il classico a 21</div>
+      </div>
       <button class="btn btn-primary" onclick="window._creaTorneo()">Crea Torneo</button>
+      <script>document.getElementById('t_modalita')?.addEventListener('change',function(){document.getElementById('t_punteggio_gironi_wrap').style.display=this.value==='girone'?'':'none'});</script>
     </div>`;
   }
 
@@ -90,12 +106,19 @@ export async function loadTornei() {
 }
 
 export async function creaTorneo() {
-  const nome = document.getElementById('t_nome').value.trim();
-  const tipo = document.getElementById('t_tipo').value;
+  const nome     = document.getElementById('t_nome').value.trim();
+  const tipo     = document.getElementById('t_tipo').value;
+  const modalita = document.getElementById('t_modalita')?.value || 'girone';
+  const punteggioGironi = modalita === 'girone'
+    ? parseInt(document.getElementById('t_punteggio_gironi')?.value || '21')
+    : 21;
   if (!nome) return toast('Inserisci il nome del torneo', 'error');
 
+  const faseIniziale = modalita === 'eliminazione' ? 'eliminazione' : 'girone';
   const t = await post('tournaments', {
-    nome, tipo, stato: 'in_corso', fase: 'girone', creato_da: state.currentUser.id
+    nome, tipo, stato: 'in_corso', fase: faseIniziale,
+    modalita, punteggio_gironi: punteggioGironi,
+    creato_da: state.currentUser.id
   });
 
   toast(`Torneo "${nome}" creato!`);
@@ -142,6 +165,8 @@ async function renderTorneo() {
         <span class="pill">Fase: <strong>${t.fase}</strong></span>
         <span class="pill">Stato: <strong>${t.stato === 'in_corso' ? '🟢 In corso' : '✅ Chiuso'}</strong></span>
         <span class="pill">Molt. Elo: <strong>x${cfg.moltiplicatore}</strong></span>
+        ${t.modalita === 'eliminazione' ? '<span class="pill">⚡ Eliminazione diretta</span>' : ''}
+        ${t.punteggio_gironi === 11 ? '<span class="pill">⚡ Gironi a 11pts</span>' : ''}
       </div>
     </div>
     ${isAdmin && t.stato === 'in_corso'
@@ -149,16 +174,41 @@ async function renderTorneo() {
       : ''}
   </div>`;
 
-  // ---- SEZIONE GIRONI (sempre visibile se esistono dati) ----
+  // ---- SEZIONE ISCRIZIONE ----
   const iscritto = tPlayers.find(tp => tp.player_id === state.currentUser?.id);
-  if (t.fase === 'girone' && state.currentUser && !iscritto && t.stato === 'in_corso') {
+  const faseIscrivibile = t.fase === 'girone' || t.fase === 'eliminazione';
+  if (faseIscrivibile && state.currentUser && !iscritto && t.stato === 'in_corso') {
     html += `<div class="card" style="margin-bottom:16px">
       <button class="btn btn-primary" onclick="window._iscrivitiTorneo('${t.id}')">🎾 Iscriviti al Torneo</button>
     </div>`;
   }
 
-  if (tPlayers.length === 0 && t.fase === 'girone') {
+  if (tPlayers.length === 0 && faseIscrivibile) {
     html += `<div class="empty"><div class="icon">👥</div><p>Nessun iscritto ancora</p></div>`;
+    document.getElementById('torneoDetailContent').innerHTML = html;
+    return;
+  }
+
+  // ---- MODALITÀ ELIMINAZIONE DIRETTA ----
+  if (t.modalita === 'eliminazione') {
+    const hasElimMatches = allMatches.some(m => m.girone?.match(/^(ottavi|quarti|semifinale|finale)/));
+
+    if (!hasElimMatches && t.fase === 'eliminazione') {
+      // Mostra lista iscritti e tasto genera bracket
+      html += `<div class="card" style="margin-bottom:16px">
+        <div class="card-title">Iscritti (${tPlayers.length})</div>
+        ${tPlayers.map(tp => {
+          const p = state.allPlayers.find(p => p.id === tp.player_id);
+          return `<div class="match-item"><div class="match-players">${avatarEl(p?.nome||'?', 32, getAvatarUrl(p?.id))} <span>${p?.nome||'?'}</span></div></div>`;
+        }).join('')}
+        ${isAdmin && t.stato === 'in_corso' ? (tPlayers.length >= 2
+          ? `<button class="btn btn-primary" style="margin-top:12px" onclick="window._generaBracketEliminazione('${t.id}')">⚡ Genera Bracket Eliminazione</button>`
+          : `<p style="color:var(--text2);font-size:13px;margin-top:12px">Servono almeno 2 giocatori</p>`) : ''}
+      </div>`;
+    } else {
+      html += renderBracket(allMatches, t, isAdmin);
+    }
+
     document.getElementById('torneoDetailContent').innerHTML = html;
     return;
   }
@@ -236,7 +286,7 @@ async function renderTorneo() {
     }
 
     if (isAdmin && t.stato === 'in_corso' && t.fase === 'girone') {
-      const totaleMatch        = calcolaTotaleMatchGirone(tPlayers, Object.keys(gironi).length);
+      const totaleMatch        = calcolaTotaleMatchGirone(tPlayers);
       const matchCompletati    = allMatches.filter(m => m.tipo === 'torneo' && m.confermata && m.girone && !m.girone.includes('_spareggio')).length;
       const spareggiosPendenti = allMatches.filter(m => m.girone?.includes('_spareggio') && !m.confermata).length;
 
@@ -285,7 +335,8 @@ export async function generaGironi(torneoId) {
   if (state.allPlayers.length === 0) state.allPlayers = await get('players', 'select=*');
 
   const n = tPlayers.length;
-  let nGironi = n <= 8 ? 2 : n <= 12 ? Math.ceil(n / 4) : 4;
+  // Sempre numero pari di gironi per garantire bracket bilanciato
+  let nGironi = n <= 11 ? 2 : 4;
 
   const seeded = tPlayers.map(tp => ({
     ...tp,
@@ -347,9 +398,13 @@ function calcolaStandingsGirone(gPlayers, gMatches) {
   });
 }
 
-function calcolaTotaleMatchGirone(tPlayers, nGironi) {
-  const perGirone = Math.ceil(tPlayers.length / nGironi);
-  return nGironi * (perGirone * (perGirone - 1) / 2);
+function calcolaTotaleMatchGirone(tPlayers) {
+  const counts = {};
+  tPlayers.forEach(tp => {
+    const g = tp.girone || 'A';
+    counts[g] = (counts[g] || 0) + 1;
+  });
+  return Object.values(counts).reduce((sum, n) => sum + n * (n - 1) / 2, 0);
 }
 
 // =============================================
@@ -436,7 +491,12 @@ async function _doSubmitTorneoMatch(s1, s2) {
   if (!_torneoMatchPending) return;
   const { torneoId, p1id, p2id, girone } = _torneoMatchPending;
 
-  if (!isValidScore(s1, s2)) return toast('Punteggio non valido (21 con +2)', 'error');
+  // La fase finale usa sempre 21, i gironi usano il punteggio configurato
+  const [torneo] = await get('tournaments', `id=eq.${torneoId}&select=punteggio_gironi,fase`);
+  const isFaseGirone = girone && !girone.match(/^(semifinale|quarti|finale|ottavi)/);
+  const usaPunteggio11 = isFaseGirone && torneo?.punteggio_gironi === 11;
+  const scoreOk = usaPunteggio11 ? isValidScore11(s1, s2) : isValidScore(s1, s2);
+  if (!scoreOk) return toast(usaPunteggio11 ? 'Punteggio non valido (11 con +2)' : 'Punteggio non valido (21 con +2)', 'error');
 
   // Guard: esiste già un match tra questi due giocatori specifici con un vincitore?
   const existing = await get('matches',
@@ -475,10 +535,10 @@ async function _doSubmitTorneoMatch(s1, s2) {
 
   if (isAdmin) {
     await applicaEloTorneo(p1id, p2id, winnerId, torneoId);
-    // Auto-genera finale se siamo in semifinale e tutte sono concluse
     if (girone?.startsWith('semifinale')) {
       await _autoGeneraFinaleSePronta(torneoId);
     }
+    await _autoAvanzaEliminazione(torneoId, girone || '');
     toast('Partita registrata e Elo aggiornato!');
   } else {
     // Notifica push all'avversario come nelle partite libere
@@ -515,10 +575,10 @@ export async function confirmTorneoMatch(matchId) {
   await applicaEloTorneo(m.player1_id, m.player2_id, m.winner_id, m.torneo_id);
   toast('Partita confermata! Elo aggiornato.');
 
-  // Auto-genera la finale se tutte le semifinali sono concluse
   if (m.girone?.startsWith('semifinale')) {
     await _autoGeneraFinaleSePronta(m.torneo_id);
   }
+  await _autoAvanzaEliminazione(m.torneo_id, m.girone || '');
 
   await renderTorneo();
 }
@@ -703,6 +763,112 @@ async function generaBracketFinale(torneoId, qualificati) {
 }
 
 // =============================================
+// ELIMINAZIONE DIRETTA
+// =============================================
+
+export async function generaBracketEliminazione(torneoId) {
+  const tPlayers = await get('tournament_players', `torneo_id=eq.${torneoId}&select=*`);
+  if (state.allPlayers.length === 0) state.allPlayers = await get('players', 'select=*');
+
+  const n = tPlayers.length;
+  if (n < 2) return toast('Servono almeno 2 giocatori', 'error');
+
+  // Determina la potenza di 2 più vicina per lo slot del bracket
+  const slots = Math.pow(2, Math.ceil(Math.log2(n)));
+  const nBye  = slots - n;
+
+  // Seed per Elo decrescente
+  const seeded = tPlayers.map(tp => ({
+    ...tp,
+    elo: state.allPlayers.find(p => p.id === tp.player_id)?.elo || 1000
+  })).sort((a, b) => b.elo - a.elo);
+
+  // Round iniziale label
+  const roundLabels = { 2: 'finale', 4: 'semifinale', 8: 'quarti', 16: 'ottavi' };
+  const roundName   = roundLabels[slots] || `r${slots}`;
+
+  // I primi `nBye` giocatori (top seeds) ottengono un bye (slot vuoto nel round iniziale)
+  // I restanti giocano il primo round
+  const byePlayers  = seeded.slice(0, nBye);
+  const matchPlayers = seeded.slice(nBye);
+
+  const matchesToCreate = [];
+  for (let i = 0; i < matchPlayers.length; i += 2) {
+    const p1 = matchPlayers[i];
+    const p2 = matchPlayers[i + 1];
+    if (p1 && p2) {
+      matchesToCreate.push({ p1: p1.player_id, p2: p2.player_id });
+    }
+  }
+
+  await Promise.all(matchesToCreate.map((m, i) =>
+    post('matches', {
+      player1_id: m.p1, player2_id: m.p2,
+      winner_id: null, registrata_da: state.currentUser.id,
+      confermata: false, tipo: 'torneo', torneo_id: torneoId, girone: `${roundName}_${i+1}`
+    })
+  ));
+
+  // Crea anche i match del round successivo con i bye (player2 = null = TBD)
+  if (nBye > 0 && slots > 2) {
+    const nextRoundLabels = { 4: 'semifinale', 8: 'quarti', 16: 'ottavi' };
+    const nextLabel = Object.entries(nextRoundLabels).find(([s]) => parseInt(s) === slots / 2)?.[1] || 'semifinale';
+    for (let i = 0; i < byePlayers.length; i++) {
+      await post('matches', {
+        player1_id: byePlayers[i].player_id, player2_id: null,
+        winner_id: null, registrata_da: state.currentUser.id,
+        confermata: false, tipo: 'torneo', torneo_id: torneoId,
+        girone: `${nextLabel}_bye_${i+1}`, note: 'bye'
+      });
+    }
+  }
+
+  await patch('tournaments', `id=eq.${torneoId}`, { fase: 'finale' });
+  currentTorneo.fase = 'finale';
+
+  toast('Bracket eliminazione generato!');
+  await renderTorneo();
+}
+
+// Avanza automaticamente i vincitori nel bracket eliminazione
+async function _autoAvanzaEliminazione(torneoId, gironeName) {
+  const allMatches = await get('matches', `torneo_id=eq.${torneoId}&select=*`);
+  const roundName  = gironeName.split('_')[0];
+
+  const roundOrder = ['ottavi', 'quarti', 'semifinale', 'finale'];
+  const currIdx    = roundOrder.indexOf(roundName);
+  if (currIdx < 0 || currIdx >= roundOrder.length - 1) return;
+
+  const nextRound   = roundOrder[currIdx + 1];
+  const currMatches = allMatches.filter(m => m.girone?.startsWith(roundName) && !m.girone.includes('bye'));
+  const allDone     = currMatches.every(m => m.confermata);
+  if (!allDone) return;
+
+  const nextExists = allMatches.some(m => m.girone?.startsWith(nextRound) && !m.girone.includes('bye'));
+  if (nextExists) return;
+
+  const vincitori = currMatches.map(m => m.winner_id);
+  // Aggiungi i bye del prossimo round
+  const byeMatches = allMatches.filter(m => m.girone?.startsWith(`${nextRound}_bye`));
+  const byeVincitori = byeMatches.map(m => m.player1_id);
+
+  const allNextPlayers = [...vincitori, ...byeVincitori].filter(Boolean);
+  for (let i = 0; i < allNextPlayers.length; i += 2) {
+    const p1 = allNextPlayers[i];
+    const p2 = allNextPlayers[i + 1];
+    if (p1 && p2) {
+      await post('matches', {
+        player1_id: p1, player2_id: p2,
+        winner_id: null, registrata_da: state.currentUser.id,
+        confermata: false, tipo: 'torneo', torneo_id: torneoId, girone: `${nextRound}_${i/2+1}`
+      });
+    }
+  }
+
+  toast(`🏓 ${nextRound.charAt(0).toUpperCase() + nextRound.slice(1)} generati automaticamente!`);
+}
+
+// =============================================
 // BRACKET FINALE
 // =============================================
 
@@ -710,12 +876,14 @@ function renderBracket(allMatches, torneo, isAdmin) {
   const rounds = {};
   allMatches.forEach(m => {
     if (!m.girone) return;
+    // Escludi i placeholder bye (non mostrati nel bracket)
+    if (m.note === 'bye') return;
     const roundName = m.girone.split('_')[0];
     if (!rounds[roundName]) rounds[roundName] = [];
     rounds[roundName].push(m);
   });
 
-  const roundOrder   = ['quarti', 'semifinale', 'finale'];
+  const roundOrder    = ['ottavi', 'quarti', 'semifinale', 'finale'];
   const presentRounds = roundOrder.filter(r => rounds[r]);
 
   if (presentRounds.length === 0) {
@@ -726,7 +894,8 @@ function renderBracket(allMatches, torneo, isAdmin) {
 
   for (const roundName of presentRounds) {
     const rMatches = rounds[roundName];
-    const label    = roundName === 'finale' ? 'FINALE' : roundName === 'semifinale' ? 'SEMIFINALI' : 'QUARTI';
+    const labelMap = { finale: 'FINALE', semifinale: 'SEMIFINALI', quarti: 'QUARTI DI FINALE', ottavi: 'OTTAVI DI FINALE' };
+    const label    = labelMap[roundName] || roundName.toUpperCase();
     html += `<div class="bracket-round"><div class="bracket-round-title">${label}</div>`;
 
     rMatches.forEach(m => {
